@@ -54,6 +54,7 @@ and warns you if MLB's feed doesn't reconcile.
 | `index.html` | The whole app — markup, styles, simulation, charts, and the baked-in data |
 | `refresh_data.py` | Downloads fresh data and injects it into `index.html` |
 | `history.json` | One row per day of the season, written by the refresh job |
+| `logos/` | Each club's cap logo, both tones, cached from MLB so the page never hotlinks |
 
 ## Layout
 

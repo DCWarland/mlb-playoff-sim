@@ -61,6 +61,41 @@ def get(url, tries=4):
         time.sleep(wait)
 
 
+LOGO_DIR = "logos"
+LOGO_SRC = "https://www.mlbstatic.com/team-logos/team-cap-on-{tone}/{tid}.svg"
+
+
+def fetch_logos(order):
+    """Pull each club's cap logo once and keep it in the repo, so the page loads
+    them from its own origin instead of hotlinking MLB's servers on every visit.
+
+    Two tones: the light one is drawn for a pale background, the dark one leans on
+    white for a black one. Already-downloaded files are left alone, so the daily
+    job does not hammer their CDN for artwork that never changes."""
+    os.makedirs(os.path.join(HERE, LOGO_DIR), exist_ok=True)
+    got = skipped = failed = 0
+    for m in order:
+        for tone in ("light", "dark"):
+            path = os.path.join(HERE, LOGO_DIR, f"{tone}-{m['id']}.svg")
+            if os.path.exists(path) and os.path.getsize(path) > 200:
+                skipped += 1
+                continue
+            url = LOGO_SRC.format(tone=tone, tid=m["id"])
+            try:
+                req = urllib.request.Request(url, headers={"User-Agent": "mlb-playoff-sim"})
+                with urllib.request.urlopen(req, timeout=60) as r:
+                    data = r.read()
+                if len(data) < 200 or b"<svg" not in data[:200]:
+                    raise ValueError("not an svg")
+                open(path, "wb").write(data)
+                got += 1
+            except Exception as e:                      # a missing logo is cosmetic
+                failed += 1
+                print(f"  logo {m['abbr']} {tone}: {e} (the page falls back to a colour mark)")
+    print(f"Logos: {got} downloaded, {skipped} already present"
+          + (f", {failed} unavailable" if failed else "") + ".")
+
+
 def main():
     print(f"Downloading the {SEASON} season from the MLB Stats API…")
     try:
@@ -230,7 +265,7 @@ def main():
     remaining.sort(key=lambda g: g[0])
     played.sort(key=lambda g: g[0])
 
-    keep = ("i", "abbr", "name", "full", "city", "lg", "div", "divName", "w", "l",
+    keep = ("i", "id", "abbr", "name", "full", "city", "lg", "div", "divName", "w", "l",
             "pct", "pyth", "rs", "ra", "gp", "rem", "gb", "wcgb", "l10", "streak")
     out = {
         "lastGameDate": last_final,
@@ -276,6 +311,8 @@ def main():
     reparsed = json.loads(check[a + len('<script id="mlb-data" type="application/json">'):b])
     if len(reparsed["teams"]) != 30 or reparsed["lastGameDate"] != last_final:
         sys.exit("ERROR: data block did not survive the write")
+
+    fetch_logos(order)
 
     tor = next(m for m in al if m["abbr"] == "TOR")
     print(f"Games complete through {last_final}.")
