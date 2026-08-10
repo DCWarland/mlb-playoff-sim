@@ -4,6 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Blue Jays Playoff Watch — 2026</title>
+<!-- Shown as the preview when the link is texted or posted. -->
+<meta name="description" content="Will the Blue Jays make the playoffs? Simulate the rest of the 2026 season with the real schedule and standings, and change how any team finishes.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Blue Jays Playoff Watch">
+<meta property="og:description" content="Simulate the rest of the 2026 season with the real schedule. Change how any team finishes and watch the odds move.">
+<meta name="twitter:card" content="summary">
+<!-- Tints the browser chrome on phones to match the page. -->
+<meta name="theme-color" content="#f5f2ea" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#12110e" media="(prefers-color-scheme: dark)">
 <style>
 /* ---------------------------------------------------------------------------
    Set like a newspaper sports page: warm stock, ink, ruled tables, agate
@@ -115,10 +124,45 @@ input[type=range]:disabled{opacity:.4; cursor:default}
 /* ---- layout ---- */
 .shell{max-width:1400px; margin:0 auto; padding:16px 22px 70px; display:grid;
   grid-template-columns:320px minmax(0,1fr); gap:30px; align-items:start}
+/* On a phone or tablet the answer comes first and the controls follow, so a
+   visitor who just wants to see the forecast never has to scroll past sliders. */
 @media (max-width:1020px){
-  .shell{grid-template-columns:1fr; gap:22px}
-  .rail{position:static !important; max-height:none !important; overflow:visible !important;
-    border-right:0; border-bottom:1px solid var(--rule); padding-bottom:14px}
+  .shell{grid-template-columns:1fr; gap:26px}
+  main{order:1}
+  .rail{
+    order:2; position:static !important; max-height:none !important; overflow:visible !important;
+    border-right:0; border-top:2px solid var(--ink); padding-right:0; padding-top:14px;
+  }
+  .rail-body{padding-right:0}
+  .railtitle{display:block}
+}
+.railtitle{display:none; font-family:var(--f-display); font-size:16px; font-weight:700; margin-bottom:9px}
+.railtitle span{display:block; font-family:var(--f-ui); font-size:11.5px; font-weight:400;
+  color:var(--ink2); margin-top:2px}
+
+/* Touch devices get thumbs big enough to actually hit. */
+@media (pointer:coarse){
+  input[type=range]{height:32px}
+  input[type=range]::-webkit-slider-thumb{width:20px; height:20px; margin-top:-10px}
+  input[type=range]::-moz-range-thumb{width:20px; height:20px}
+  .orow,.trow{padding:3px 0}
+  summary{padding:6px 0}
+}
+
+/* Phone-sized type and spacing. */
+@media (max-width:640px){
+  body{font-size:14px}
+  .mast-in{padding:9px 14px 8px; gap:12px}
+  .mast h1{font-size:19px; letter-spacing:.03em}
+  .dateline{font-size:9.5px; letter-spacing:.07em; line-height:1.5}
+  .mast-odds .n{font-size:25px}
+  .shell{padding:14px 14px 56px}
+  .lead .fig{font-size:58px}
+  .lead .fig .pc{font-size:24px}
+  .figs{grid-template-columns:repeat(auto-fit,minmax(88px,1fr))}
+  .figs .v{font-size:18px}
+  .sec > .hd h2{font-size:15px}
+  .tabs button{padding:8px 10px; letter-spacing:.08em}
 }
 .rail{
   position:sticky; top:66px; max-height:calc(100vh - 82px); overflow-y:auto;
@@ -281,6 +325,9 @@ tr.model td.res{color:var(--ink2)}
 
   <!-- ============================ CONTROLS ============================ -->
   <aside class="rail">
+    <div class="railtitle">Play with it yourself
+      <span>Change how the Jays or anyone else finishes, and every number above updates.</span>
+    </div>
     <div class="tabs small" role="tablist" aria-label="Controls">
       <button role="tab" id="rt-jays" aria-controls="rp-jays" aria-selected="true">Jays</button>
       <button role="tab" id="rt-league" aria-controls="rp-league" aria-selected="false">League</button>
