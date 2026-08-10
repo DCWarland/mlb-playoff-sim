@@ -168,10 +168,33 @@ def main():
         print("WARNING: scheduled game counts do not reconcile with games played:", bad)
         print("The simulation still runs, but a team's season may not total 162 games.")
 
+    # Carry forward the previous day's records so the page can show how each
+    # magic number moved overnight. Only rolls over when the feed has actually
+    # advanced a day, so re-running this twice on one afternoon keeps yesterday
+    # as yesterday instead of wiping it.
+    prev = None
+    try:
+        old_html = open(PAGE, encoding="utf-8").read()
+        tag = '<script id="mlb-data" type="application/json">'
+        a = old_html.find(tag)
+        b = old_html.find("</script>", a)
+        if a >= 0 and b >= 0:
+            old = json.loads(old_html[a + len(tag):b])
+            old_date = old.get("lastGameDate")
+            if old_date and old_date < last_final and old.get("teams"):
+                prev = {"date": old_date,
+                        "w": {t["abbr"]: t["w"] for t in old["teams"]},
+                        "l": {t["abbr"]: t["l"] for t in old["teams"]}}
+            elif old_date == last_final:
+                prev = old.get("prev")          # same day: keep what we had
+    except (OSError, ValueError, KeyError):
+        prev = None
+
     keep = ("i", "abbr", "name", "full", "city", "lg", "div", "divName", "w", "l",
             "pct", "pyth", "rs", "ra", "gp", "rem", "gb", "wcgb", "l10", "streak")
     out = {
         "lastGameDate": last_final,
+        "prev": prev,
         "nAL": NAL,
         "dates": dates,
         "teams": [{k: m[k] for k in keep} for m in order],

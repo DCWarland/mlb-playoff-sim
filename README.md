@@ -66,7 +66,14 @@ Controls live in the left rail under three tabs; views are tabbed across the top
   slider and it solves for the strength that produces it.
 - **Model** — home-field edge, regression to .500, weight on run difference
 
-**Views — Forecast / Matchups / Standings / Schedule / Method**
+**Views — Forecast / Matchups / Standings / Magic / Schedule / Method**
+
+**Magic** is the one tab the controls don't touch. A magic number is arithmetic on
+games already played — how many combined events (your wins plus their losses) must
+land before a result is guaranteed. `M(a,b) = (W_b + games_b_left) - W_a + 1`, which
+read from the other side is *b*'s elimination number against *a*. So one 15×15 grid
+answers both questions. It moves once a day on real results, and shows how each
+number changed overnight.
 
 **Matchups** is the full-control sheet: all 116 pairs of clubs with games left.
 `Model` simulates from strength, `Rate` fixes a win percentage, `Pin` fixes an exact

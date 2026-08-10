@@ -279,6 +279,16 @@ summary:hover{color:var(--ink)}
 .tot b{color:var(--ink); font-family:var(--f-num); font-size:11.5px}
 .presets{display:flex; flex-wrap:wrap; gap:4px; margin-top:4px}
 
+/* the magic-number grid: tight cells, and a frozen first column so the row you
+   are reading stays identified while you scroll sideways on a phone */
+#mgGrid table{font-size:11px}
+#mgGrid th,#mgGrid td{padding:3px 5px; text-align:right}
+#mgGrid thead th:first-child,#mgGrid tbody td:first-child{
+  position:sticky; left:0; background:var(--paper); text-align:left; z-index:1;
+}
+#mgGrid tbody tr:hover td:first-child{background:var(--tint)}
+#mgGrid thead th{background:var(--paper)}
+
 /* matchup sheet */
 #mtbl td{padding:2px 7px}
 #mtbl select{padding:1px 3px; font-size:11px}
@@ -385,6 +395,7 @@ tr.model td.res{color:var(--ink2)}
       <button role="tab" id="t-fc" aria-controls="p-fc" aria-selected="true">Forecast</button>
       <button role="tab" id="t-mu" aria-controls="p-mu" aria-selected="false">Matchups</button>
       <button role="tab" id="t-st" aria-controls="p-st" aria-selected="false">Standings</button>
+      <button role="tab" id="t-mg" aria-controls="p-mg" aria-selected="false">Magic</button>
       <button role="tab" id="t-sc" aria-controls="p-sc" aria-selected="false">Schedule</button>
       <button role="tab" id="t-me" aria-controls="p-me" aria-selected="false">Method</button>
     </div>
@@ -493,6 +504,37 @@ tr.model td.res{color:var(--ink2)}
       </section>
     </div>
 
+    <!-- ---------- MAGIC NUMBERS ---------- -->
+    <div role="tabpanel" id="p-mg" aria-labelledby="t-mg" hidden style="padding-top:20px">
+      <section class="sec">
+        <div class="hd"><h2>Toronto's road in</h2><span class="kicker" id="mgAsOf"></span></div>
+        <p class="lede">A <b>magic number</b> is the oldest arithmetic in baseball: how many combined
+          events must land your way before a result is guaranteed, whatever happens afterwards. Each of
+          your own wins counts one. So does each loss by the club you are chasing. When it reaches zero
+          it is settled. Nothing here is simulated or predicted — it is only games already played, so
+          the sliders have no effect on this tab. It moves once a day, on real results.</p>
+        <div class="figs" id="mgFigs"></div>
+        <div class="tscroll" id="mgPath" style="margin-top:22px"></div>
+      </section>
+
+      <section class="sec">
+        <div class="hd"><h2>Every club</h2><span class="kicker">American League</span></div>
+        <p class="lede"><b>Division</b> is the magic number to win the division outright, or the
+          elimination number if the club is chasing. <b>Can pass them</b> counts how many clubs could
+          still finish above them — six or fewer and a berth is clinched, since only six get in.</p>
+        <div class="tscroll" id="mgTable"></div>
+      </section>
+
+      <section class="sec">
+        <div class="hd"><h2>The grid</h2><span class="kicker">15 × 15</span></div>
+        <p class="lede">Read a <b>row</b> for what that club needs to finish guaranteed ahead of each
+          other club. Read a <b>column</b> for what would knock that club below each rival — the two are
+          the same number seen from opposite ends. <b>✓</b> means already settled, <b>✗</b> means no
+          longer possible. Small numbers are close to decided.</p>
+        <div class="tscroll" id="mgGrid"></div>
+      </section>
+    </div>
+
     <!-- ---------- SCHEDULE ---------- -->
     <div role="tabpanel" id="p-sc" aria-labelledby="t-sc" hidden style="padding-top:20px">
       <section class="sec">
@@ -516,7 +558,7 @@ tr.model td.res{color:var(--ink2)}
 
 <div id="tip" role="status" aria-live="polite"></div>
 
-<!--DATA-START--><script id="mlb-data" type="application/json">{"lastGameDate":"2026-08-09","nAL":15,"dates":["2026-08-10","2026-08-11","2026-08-12","2026-08-13","2026-08-14","2026-08-15","2026-08-16","2026-08-17","2026-08-18","2026-08-19","2026-08-20","2026-08-21","2026-08-22","2026-08-23","2026-08-24","2026-08-25","2026-08-26","2026-08-27","2026-08-28","2026-08-29","2026-08-30","2026-08-31","2026-09-01","2026-09-02","2026-09-03","2026-09-04","2026-09-05","2026-09-06","2026-09-07","2026-09-08","2026-09-09","2026-09-10","2026-09-11","2026-09-12","2026-09-13","2026-09-14","2026-09-15","2026-09-16","2026-09-17","2026-09-18","2026-09-19","2026-09-20","2026-09-21","2026-09-22","2026-09-23","2026-09-24","2026-09-25","2026-09-26","2026-09-27"],"teams":[{"i":0,"abbr":"TB","name":"Rays","full":"Tampa Bay Rays","city":"Tampa Bay","lg":0,"div":0,"divName":"AL East","w":71,"l":46,"pct":0.60684,"pyth":0.54236,"rs":519,"ra":473,"gp":117,"rem":45,"gb":"-","wcgb":"-","l10":"8-2","streak":"W6"},{"i":1,"abbr":"NYY","name":"Yankees","full":"New York Yankees","city":"NY Yankees","lg":0,"div":0,"divName":"AL East","w":66,"l":52,"pct":0.55932,"pyth":0.57614,"rs":531,"ra":449,"gp":118,"rem":44,"gb":"5.5","wcgb":"+7.0","l10":"5-5","streak":"L1"},{"i":2,"abbr":"BOS","name":"Red Sox","full":"Boston Red Sox","city":"Boston","lg":0,"div":0,"divName":"AL East","w":64,"l":53,"pct":0.54701,"pyth":0.57942,"rs":523,"ra":439,"gp":117,"rem":45,"gb":"7.0","wcgb":"+5.5","l10":"8-2","streak":"L2"},{"i":3,"abbr":"BAL","name":"Orioles","full":"Baltimore Orioles","city":"Baltimore","lg":0,"div":0,"divName":"AL East","w":57,"l":61,"pct":0.48305,"pyth":0.47229,"rs":528,"ra":561,"gp":118,"rem":44,"gb":"14.5","wcgb":"2.0","l10":"5-5","streak":"W1"},{"i":4,"abbr":"TOR","name":"Blue Jays","full":"Toronto Blue Jays","city":"Toronto","lg":0,"div":0,"divName":"AL East","w":56,"l":63,"pct":0.47059,"pyth":0.446,"rs":469,"ra":528,"gp":119,"rem":43,"gb":"16.0","wcgb":"3.5","l10":"6-4","streak":"L1"},{"i":5,"abbr":"CWS","name":"White Sox","full":"Chicago White Sox","city":"Chi White Sox","lg":0,"div":1,"divName":"AL Central","w":61,"l":56,"pct":0.52137,"pyth":0.53141,"rs":557,"ra":520,"gp":117,"rem":45,"gb":"-","wcgb":"-","l10":"5-5","streak":"W2"},{"i":6,"abbr":"MIN","name":"Twins","full":"Minnesota Twins","city":"Minnesota","lg":0,"div":1,"divName":"AL Central","w":58,"l":61,"pct":0.48739,"pyth":0.47195,"rs":553,"ra":588,"gp":119,"rem":43,"gb":"4.0","wcgb":"1.5","l10":"4-6","streak":"L2"},{"i":7,"abbr":"CLE","name":"Guardians","full":"Cleveland Guardians","city":"Cleveland","lg":0,"div":1,"divName":"AL Central","w":58,"l":61,"pct":0.48739,"pyth":0.47462,"rs":473,"ra":500,"gp":119,"rem":43,"gb":"4.0","wcgb":"1.5","l10":"3-7","streak":"L2"},{"i":8,"abbr":"DET","name":"Tigers","full":"Detroit Tigers","city":"Detroit","lg":0,"div":1,"divName":"AL Central","w":58,"l":60,"pct":0.49153,"pyth":0.57985,"rs":539,"ra":452,"gp":118,"rem":44,"gb":"3.5","wcgb":"1.0","l10":"7-3","streak":"W2"},{"i":9,"abbr":"KC","name":"Royals","full":"Kansas City Royals","city":"Kansas City","lg":0,"div":1,"divName":"AL Central","w":49,"l":70,"pct":0.41176,"pyth":0.40872,"rs":492,"ra":602,"gp":119,"rem":43,"gb":"13.0","wcgb":"10.5","l10":"3-7","streak":"L1"},{"i":10,"abbr":"HOU","name":"Astros","full":"Houston Astros","city":"Houston","lg":0,"div":2,"divName":"AL West","w":60,"l":59,"pct":0.5042,"pyth":0.4773,"rs":550,"ra":578,"gp":119,"rem":43,"gb":"-","wcgb":"-","l10":"6-4","streak":"L2"},{"i":11,"abbr":"TEX","name":"Rangers","full":"Texas Rangers","city":"Texas","lg":0,"div":2,"divName":"AL West","w":59,"l":59,"pct":0.5,"pyth":0.47016,"rs":489,"ra":522,"gp":118,"rem":44,"gb":"0.5","wcgb":"-","l10":"4-6","streak":"L1"},{"i":12,"abbr":"SEA","name":"Mariners","full":"Seattle Mariners","city":"Seattle","lg":0,"div":2,"divName":"AL West","w":56,"l":63,"pct":0.47059,"pyth":0.48157,"rs":462,"ra":481,"gp":119,"rem":43,"gb":"4.0","wcgb":"3.5","l10":"3-7","streak":"L4"},{"i":13,"abbr":"ATH","name":"Athletics","full":"Athletics","city":"Athletics","lg":0,"div":2,"divName":"AL West","w":47,"l":71,"pct":0.39831,"pyth":0.37514,"rs":510,"ra":674,"gp":118,"rem":44,"gb":"12.5","wcgb":"12.0","l10":"2-8","streak":"W2"},{"i":14,"abbr":"LAA","name":"Angels","full":"Los Angeles Angels","city":"LA Angels","lg":0,"div":2,"divName":"AL West","w":45,"l":73,"pct":0.38136,"pyth":0.42183,"rs":484,"ra":575,"gp":118,"rem":44,"gb":"14.5","wcgb":"14.0","l10":"3-7","streak":"L2"},{"i":15,"abbr":"ATL","name":"Braves","full":"Atlanta Braves","city":"Atlanta","lg":1,"div":0,"divName":"NL East","w":71,"l":47,"pct":0.60169,"pyth":0.60012,"rs":578,"ra":463,"gp":118,"rem":44,"gb":"-","wcgb":"-","l10":"8-2","streak":"W1"},{"i":16,"abbr":"PHI","name":"Phillies","full":"Philadelphia Phillies","city":"Philadelphia","lg":1,"div":0,"divName":"NL East","w":63,"l":56,"pct":0.52941,"pyth":0.5,"rs":528,"ra":528,"gp":119,"rem":43,"gb":"8.5","wcgb":"-","l10":"6-4","streak":"W1"},{"i":17,"abbr":"MIA","name":"Marlins","full":"Miami Marlins","city":"Miami","lg":1,"div":0,"divName":"NL East","w":60,"l":59,"pct":0.5042,"pyth":0.51328,"rs":524,"ra":509,"gp":119,"rem":43,"gb":"11.5","wcgb":"3.0","l10":"5-5","streak":"W2"},{"i":18,"abbr":"WSH","name":"Nationals","full":"Washington Nationals","city":"Washington","lg":1,"div":0,"divName":"NL East","w":59,"l":61,"pct":0.49167,"pyth":0.5174,"rs":643,"ra":619,"gp":120,"rem":42,"gb":"13.0","wcgb":"4.5","l10":"4-6","streak":"W3"},{"i":19,"abbr":"NYM","name":"Mets","full":"New York Mets","city":"NY Mets","lg":1,"div":0,"divName":"NL East","w":52,"l":67,"pct":0.43697,"pyth":0.46226,"rs":499,"ra":542,"gp":119,"rem":43,"gb":"19.5","wcgb":"11.0","l10":"6-4","streak":"W1"},{"i":20,"abbr":"MIL","name":"Brewers","full":"Milwaukee Brewers","city":"Milwaukee","lg":1,"div":1,"divName":"NL Central","w":74,"l":44,"pct":0.62712,"pyth":0.62356,"rs":585,"ra":444,"gp":118,"rem":44,"gb":"-","wcgb":"-","l10":"7-3","streak":"W2"},{"i":21,"abbr":"CHC","name":"Cubs","full":"Chicago Cubs","city":"Chi Cubs","lg":1,"div":1,"divName":"NL Central","w":69,"l":50,"pct":0.57983,"pyth":0.58672,"rs":614,"ra":507,"gp":119,"rem":43,"gb":"5.5","wcgb":"+6.0","l10":"7-3","streak":"W1"},{"i":22,"abbr":"STL","name":"Cardinals","full":"St. Louis Cardinals","city":"St. Louis","lg":1,"div":1,"divName":"NL Central","w":59,"l":59,"pct":0.5,"pyth":0.49295,"rs":515,"ra":523,"gp":118,"rem":44,"gb":"15.0","wcgb":"3.5","l10":"5-5","streak":"W1"},{"i":23,"abbr":"PIT","name":"Pirates","full":"Pittsburgh Pirates","city":"Pittsburgh","lg":1,"div":1,"divName":"NL Central","w":58,"l":62,"pct":0.48333,"pyth":0.51624,"rs":602,"ra":581,"gp":120,"rem":42,"gb":"17.0","wcgb":"5.5","l10":"3-7","streak":"L1"},{"i":24,"abbr":"CIN","name":"Reds","full":"Cincinnati Reds","city":"Cincinnati","lg":1,"div":1,"divName":"NL Central","w":56,"l":61,"pct":0.47863,"pyth":0.43503,"rs":482,"ra":556,"gp":117,"rem":45,"gb":"17.5","wcgb":"6.0","l10":"6-4","streak":"L3"},{"i":25,"abbr":"LAD","name":"Dodgers","full":"Los Angeles Dodgers","city":"LA Dodgers","lg":1,"div":2,"divName":"NL West","w":70,"l":48,"pct":0.59322,"pyth":0.61931,"rs":591,"ra":453,"gp":118,"rem":44,"gb":"-","wcgb":"-","l10":"2-8","streak":"L1"},{"i":26,"abbr":"AZ","name":"D-backs","full":"Arizona Diamondbacks","city":"Arizona","lg":1,"div":2,"divName":"NL West","w":63,"l":56,"pct":0.52941,"pyth":0.50428,"rs":537,"ra":532,"gp":119,"rem":43,"gb":"7.5","wcgb":"-","l10":"6-4","streak":"W1"},{"i":27,"abbr":"SD","name":"Padres","full":"San Diego Padres","city":"San Diego","lg":1,"div":2,"divName":"NL West","w":62,"l":57,"pct":0.52101,"pyth":0.49101,"rs":504,"ra":514,"gp":119,"rem":43,"gb":"8.5","wcgb":"1.0","l10":"7-3","streak":"W2"},{"i":28,"abbr":"SF","name":"Giants","full":"San Francisco Giants","city":"San Francisco","lg":1,"div":2,"divName":"NL West","w":49,"l":69,"pct":0.41525,"pyth":0.44919,"rs":492,"ra":550,"gp":118,"rem":44,"gb":"21.0","wcgb":"13.5","l10":"3-7","streak":"L2"},{"i":29,"abbr":"COL","name":"Rockies","full":"Colorado Rockies","city":"Colorado","lg":1,"div":2,"divName":"NL West","w":46,"l":72,"pct":0.38983,"pyth":0.41971,"rs":568,"ra":678,"gp":118,"rem":44,"gb":"24.0","wcgb":"16.5","l10":"4-6","streak":"L1"}],"games":[[0,2,4],[0,3,6],[0,11,14],[0,0,13],[0,10,28],[0,9,25],[1,7,8],[1,12,1],[1,2,4],[1,3,6],[1,24,5],[1,11,14],[1,0,13],[1,10,28],[1,9,25],[2,3,6],[2,0,13],[2,10,28],[2,7,8],[2,12,1],[2,2,4],[2,24,5],[2,9,25],[2,11,14],[3,7,8],[3,12,1],[3,24,5],[3,2,4],[3,16,6],[3,11,14],[4,2,23],[4,5,8],[4,27,7],[4,3,0],[4,1,4],[4,12,10],[4,9,14],[4,11,13],[5,5,8],[5,1,4],[5,3,0],[5,27,7],[5,12,10],[5,16,6],[5,2,23],[5,9,14],[5,11,13],[6,3,0],[6,2,23],[6,1,4],[6,27,7],[6,5,8],[6,16,6],[6,11,13],[6,9,14],[6,12,10],[7,3,0],[7,8,23],[7,26,2],[7,13,9],[7,15,6],[7,5,21],[8,1,3],[8,8,23],[8,28,7],[8,4,0],[8,26,2],[8,13,9],[8,15,6],[8,12,20],[8,18,11],[8,5,21],[8,14,10],[9,8,23],[9,15,6],[9,5,21],[9,26,2],[9,1,3],[9,28,7],[9,4,0],[9,13,9],[9,12,20],[9,18,11],[9,14,10],[10,28,7],[10,4,0],[10,13,9],[10,15,5],[10,12,20],[10,1,3],[10,18,11],[10,14,10],[11,4,1],[11,28,2],[11,0,3],[11,19,5],[11,8,9],[11,13,10],[11,14,11],[11,7,29],[11,6,27],[11,21,12],[12,4,1],[12,0,3],[12,14,11],[12,13,10],[12,19,5],[12,8,9],[12,21,12],[12,28,2],[12,7,29],[12,6,27],[13,0,3],[13,4,1],[13,8,9],[13,13,10],[13,19,5],[13,14,11],[13,7,29],[13,28,2],[13,21,12],[13,6,27],[14,0,8],[14,2,17],[14,11,5],[14,7,14],[14,6,13],[14,16,12],[15,0,8],[15,2,17],[15,10,1],[15,9,4],[15,11,5],[15,3,22],[15,7,14],[15,6,13],[15,16,12],[16,0,8],[16,7,14],[16,16,12],[16,2,17],[16,10,1],[16,9,4],[16,11,5],[16,3,22],[16,6,13],[17,3,22],[17,10,1],[17,9,4],[18,25,8],[18,9,7],[18,10,19],[18,27,0],[18,12,4],[18,2,1],[18,11,20],[18,5,6],[18,16,14],[18,3,13],[19,2,1],[19,2,1],[19,25,8],[19,5,6],[19,12,4],[19,9,7],[19,10,19],[19,27,0],[19,11,20],[19,3,13],[19,16,14],[20,2,1],[20,12,4],[20,9,7],[20,25,8],[20,27,0],[20,5,6],[20,11,20],[20,10,19],[20,3,13],[20,16,14],[21,19,0],[21,12,2],[21,8,6],[21,13,11],[21,5,10],[21,3,29],[21,1,14],[22,19,0],[22,4,7],[22,12,2],[22,8,6],[22,17,9],[22,13,11],[22,5,10],[22,3,29],[22,1,14],[23,13,11],[23,3,29],[23,12,2],[23,19,0],[23,4,7],[23,8,6],[23,17,9],[23,5,10],[23,1,14],[24,4,7],[24,5,10],[24,2,3],[24,17,9],[24,0,11],[24,13,12],[25,8,7],[25,8,7],[25,14,23],[25,2,3],[25,6,5],[25,0,11],[25,26,10],[25,4,9],[25,1,27],[25,13,12],[26,8,7],[26,14,23],[26,2,3],[26,0,11],[26,4,9],[26,6,5],[26,26,10],[26,1,27],[26,13,12],[27,2,3],[27,14,23],[27,8,7],[27,26,10],[27,4,9],[27,0,11],[27,13,12],[27,1,27],[27,6,5],[28,14,2],[28,7,3],[28,26,9],[28,6,8],[28,4,13],[29,7,3],[29,6,8],[29,10,16],[29,14,2],[29,29,1],[29,0,15],[29,26,9],[29,23,5],[29,11,12],[29,4,13],[30,6,8],[30,4,13],[30,11,12],[30,7,3],[30,10,16],[30,14,2],[30,29,1],[30,0,15],[30,26,9],[30,23,5],[31,0,15],[31,10,16],[31,11,12],[31,29,1],[31,23,5],[32,29,8],[32,14,18],[32,19,1],[32,3,4],[32,9,2],[32,10,0],[32,7,6],[32,5,22],[32,12,13],[32,11,26],[33,29,8],[33,19,1],[33,3,4],[33,14,18],[33,9,2],[33,7,6],[33,10,0],[33,5,22],[33,11,26],[33,12,13],[34,29,8],[34,9,2],[34,14,18],[34,19,1],[34,3,4],[34,10,0],[34,7,6],[34,5,22],[34,12,13],[34,11,26],[35,5,7],[35,8,4],[35,3,19],[35,1,6],[35,12,14],[36,13,0],[36,5,7],[36,8,4],[36,3,19],[36,1,6],[36,2,11],[36,9,10],[36,12,14],[37,5,7],[37,1,6],[37,8,4],[37,13,0],[37,3,19],[37,2,11],[37,9,10],[37,12,14],[38,13,0],[38,9,10],[38,8,5],[38,2,11],[38,6,14],[39,9,23],[39,20,3],[39,13,7],[39,2,0],[39,8,5],[39,4,11],[39,12,29],[39,15,10],[39,6,14],[39,1,26],[40,20,3],[40,2,0],[40,13,7],[40,9,23],[40,4,11],[40,15,10],[40,8,5],[40,12,29],[40,1,26],[40,6,14],[41,9,23],[41,13,7],[41,2,0],[41,15,10],[41,8,5],[41,4,11],[41,12,29],[41,6,14],[41,1,26],[41,20,3],[42,4,3],[42,18,8],[42,6,28],[43,0,1],[43,0,1],[43,4,3],[43,18,8],[43,7,2],[43,5,9],[43,19,11],[43,14,13],[43,10,12],[43,6,28],[44,18,8],[44,6,28],[44,4,3],[44,0,1],[44,7,2],[44,5,9],[44,19,11],[44,14,13],[44,10,12],[45,5,9],[45,19,11],[45,7,2],[45,0,1],[45,10,13],[45,14,12],[46,23,8],[46,0,16],[46,3,1],[46,24,4],[46,21,2],[46,7,9],[46,29,5],[46,11,6],[46,10,13],[46,14,12],[47,23,8],[47,24,4],[47,11,6],[47,7,9],[47,29,5],[47,21,2],[47,0,16],[47,3,1],[47,10,13],[47,14,12],[48,21,2],[48,10,13],[48,0,16],[48,24,4],[48,7,9],[48,23,8],[48,14,12],[48,11,6],[48,29,5],[48,3,1]],"h2h":[[0,6,5,3,8,4,5,5,0,5,1,2,5,0,3],[3,0,4,5,4,4,1,4,2,6,2,4,2,3,2],[5,5,0,5,3,6,1,2,5,3,1,2,2,4,3],[3,2,4,0,3,4,2,1,4,5,5,2,3,1,3],[2,3,6,4,0,1,3,2,2,0,3,0,1,3,4],[2,3,0,2,5,0,4,6,3,7,1,2,3,5,4],[1,2,5,1,4,3,0,6,5,5,4,3,2,2,2],[1,2,1,3,1,4,4,0,6,4,2,2,4,2,3],[3,4,2,2,1,3,2,0,0,6,2,4,4,6,3],[2,0,0,1,0,3,8,3,4,0,1,1,5,1,3],[2,1,5,1,3,2,2,4,5,2,0,9,1,3,6],[1,2,1,4,4,1,0,4,2,5,4,0,7,3,2],[1,1,1,4,2,3,4,3,2,1,7,3,0,4,4],[0,3,3,2,0,1,1,1,0,2,3,4,2,0,6],[3,2,0,3,2,2,1,0,3,0,4,4,2,5,0]],"divrec":[[22,13],[16,16],[18,19],[12,17],[15,18],[20,13],[19,18],[18,15],[11,18],[18,22],[19,18],[16,20],[18,12],[15,15],[15,18]],"learec":[[52,29],[46,36],[47,37],[42,40],[34,40],[47,41],[45,38],[39,41],[42,43],[32,51],[46,40],[40,42],[40,43],[28,42],[31,48]]}</script><!--DATA-END-->
+<!--DATA-START--><script id="mlb-data" type="application/json">{"lastGameDate":"2026-08-09","prev":null,"nAL":15,"dates":["2026-08-10","2026-08-11","2026-08-12","2026-08-13","2026-08-14","2026-08-15","2026-08-16","2026-08-17","2026-08-18","2026-08-19","2026-08-20","2026-08-21","2026-08-22","2026-08-23","2026-08-24","2026-08-25","2026-08-26","2026-08-27","2026-08-28","2026-08-29","2026-08-30","2026-08-31","2026-09-01","2026-09-02","2026-09-03","2026-09-04","2026-09-05","2026-09-06","2026-09-07","2026-09-08","2026-09-09","2026-09-10","2026-09-11","2026-09-12","2026-09-13","2026-09-14","2026-09-15","2026-09-16","2026-09-17","2026-09-18","2026-09-19","2026-09-20","2026-09-21","2026-09-22","2026-09-23","2026-09-24","2026-09-25","2026-09-26","2026-09-27"],"teams":[{"i":0,"abbr":"TB","name":"Rays","full":"Tampa Bay Rays","city":"Tampa Bay","lg":0,"div":0,"divName":"AL East","w":71,"l":46,"pct":0.60684,"pyth":0.54236,"rs":519,"ra":473,"gp":117,"rem":45,"gb":"-","wcgb":"-","l10":"8-2","streak":"W6"},{"i":1,"abbr":"NYY","name":"Yankees","full":"New York Yankees","city":"NY Yankees","lg":0,"div":0,"divName":"AL East","w":66,"l":52,"pct":0.55932,"pyth":0.57614,"rs":531,"ra":449,"gp":118,"rem":44,"gb":"5.5","wcgb":"+7.0","l10":"5-5","streak":"L1"},{"i":2,"abbr":"BOS","name":"Red Sox","full":"Boston Red Sox","city":"Boston","lg":0,"div":0,"divName":"AL East","w":64,"l":53,"pct":0.54701,"pyth":0.57942,"rs":523,"ra":439,"gp":117,"rem":45,"gb":"7.0","wcgb":"+5.5","l10":"8-2","streak":"L2"},{"i":3,"abbr":"BAL","name":"Orioles","full":"Baltimore Orioles","city":"Baltimore","lg":0,"div":0,"divName":"AL East","w":57,"l":61,"pct":0.48305,"pyth":0.47229,"rs":528,"ra":561,"gp":118,"rem":44,"gb":"14.5","wcgb":"2.0","l10":"5-5","streak":"W1"},{"i":4,"abbr":"TOR","name":"Blue Jays","full":"Toronto Blue Jays","city":"Toronto","lg":0,"div":0,"divName":"AL East","w":56,"l":63,"pct":0.47059,"pyth":0.446,"rs":469,"ra":528,"gp":119,"rem":43,"gb":"16.0","wcgb":"3.5","l10":"6-4","streak":"L1"},{"i":5,"abbr":"CWS","name":"White Sox","full":"Chicago White Sox","city":"Chi White Sox","lg":0,"div":1,"divName":"AL Central","w":61,"l":56,"pct":0.52137,"pyth":0.53141,"rs":557,"ra":520,"gp":117,"rem":45,"gb":"-","wcgb":"-","l10":"5-5","streak":"W2"},{"i":6,"abbr":"MIN","name":"Twins","full":"Minnesota Twins","city":"Minnesota","lg":0,"div":1,"divName":"AL Central","w":58,"l":61,"pct":0.48739,"pyth":0.47195,"rs":553,"ra":588,"gp":119,"rem":43,"gb":"4.0","wcgb":"1.5","l10":"4-6","streak":"L2"},{"i":7,"abbr":"CLE","name":"Guardians","full":"Cleveland Guardians","city":"Cleveland","lg":0,"div":1,"divName":"AL Central","w":58,"l":61,"pct":0.48739,"pyth":0.47462,"rs":473,"ra":500,"gp":119,"rem":43,"gb":"4.0","wcgb":"1.5","l10":"3-7","streak":"L2"},{"i":8,"abbr":"DET","name":"Tigers","full":"Detroit Tigers","city":"Detroit","lg":0,"div":1,"divName":"AL Central","w":58,"l":60,"pct":0.49153,"pyth":0.57985,"rs":539,"ra":452,"gp":118,"rem":44,"gb":"3.5","wcgb":"1.0","l10":"7-3","streak":"W2"},{"i":9,"abbr":"KC","name":"Royals","full":"Kansas City Royals","city":"Kansas City","lg":0,"div":1,"divName":"AL Central","w":49,"l":70,"pct":0.41176,"pyth":0.40872,"rs":492,"ra":602,"gp":119,"rem":43,"gb":"13.0","wcgb":"10.5","l10":"3-7","streak":"L1"},{"i":10,"abbr":"HOU","name":"Astros","full":"Houston Astros","city":"Houston","lg":0,"div":2,"divName":"AL West","w":60,"l":59,"pct":0.5042,"pyth":0.4773,"rs":550,"ra":578,"gp":119,"rem":43,"gb":"-","wcgb":"-","l10":"6-4","streak":"L2"},{"i":11,"abbr":"TEX","name":"Rangers","full":"Texas Rangers","city":"Texas","lg":0,"div":2,"divName":"AL West","w":59,"l":59,"pct":0.5,"pyth":0.47016,"rs":489,"ra":522,"gp":118,"rem":44,"gb":"0.5","wcgb":"-","l10":"4-6","streak":"L1"},{"i":12,"abbr":"SEA","name":"Mariners","full":"Seattle Mariners","city":"Seattle","lg":0,"div":2,"divName":"AL West","w":56,"l":63,"pct":0.47059,"pyth":0.48157,"rs":462,"ra":481,"gp":119,"rem":43,"gb":"4.0","wcgb":"3.5","l10":"3-7","streak":"L4"},{"i":13,"abbr":"ATH","name":"Athletics","full":"Athletics","city":"Athletics","lg":0,"div":2,"divName":"AL West","w":47,"l":71,"pct":0.39831,"pyth":0.37514,"rs":510,"ra":674,"gp":118,"rem":44,"gb":"12.5","wcgb":"12.0","l10":"2-8","streak":"W2"},{"i":14,"abbr":"LAA","name":"Angels","full":"Los Angeles Angels","city":"LA Angels","lg":0,"div":2,"divName":"AL West","w":45,"l":73,"pct":0.38136,"pyth":0.42183,"rs":484,"ra":575,"gp":118,"rem":44,"gb":"14.5","wcgb":"14.0","l10":"3-7","streak":"L2"},{"i":15,"abbr":"ATL","name":"Braves","full":"Atlanta Braves","city":"Atlanta","lg":1,"div":0,"divName":"NL East","w":71,"l":47,"pct":0.60169,"pyth":0.60012,"rs":578,"ra":463,"gp":118,"rem":44,"gb":"-","wcgb":"-","l10":"8-2","streak":"W1"},{"i":16,"abbr":"PHI","name":"Phillies","full":"Philadelphia Phillies","city":"Philadelphia","lg":1,"div":0,"divName":"NL East","w":63,"l":56,"pct":0.52941,"pyth":0.5,"rs":528,"ra":528,"gp":119,"rem":43,"gb":"8.5","wcgb":"-","l10":"6-4","streak":"W1"},{"i":17,"abbr":"MIA","name":"Marlins","full":"Miami Marlins","city":"Miami","lg":1,"div":0,"divName":"NL East","w":60,"l":59,"pct":0.5042,"pyth":0.51328,"rs":524,"ra":509,"gp":119,"rem":43,"gb":"11.5","wcgb":"3.0","l10":"5-5","streak":"W2"},{"i":18,"abbr":"WSH","name":"Nationals","full":"Washington Nationals","city":"Washington","lg":1,"div":0,"divName":"NL East","w":59,"l":61,"pct":0.49167,"pyth":0.5174,"rs":643,"ra":619,"gp":120,"rem":42,"gb":"13.0","wcgb":"4.5","l10":"4-6","streak":"W3"},{"i":19,"abbr":"NYM","name":"Mets","full":"New York Mets","city":"NY Mets","lg":1,"div":0,"divName":"NL East","w":52,"l":67,"pct":0.43697,"pyth":0.46226,"rs":499,"ra":542,"gp":119,"rem":43,"gb":"19.5","wcgb":"11.0","l10":"6-4","streak":"W1"},{"i":20,"abbr":"MIL","name":"Brewers","full":"Milwaukee Brewers","city":"Milwaukee","lg":1,"div":1,"divName":"NL Central","w":74,"l":44,"pct":0.62712,"pyth":0.62356,"rs":585,"ra":444,"gp":118,"rem":44,"gb":"-","wcgb":"-","l10":"7-3","streak":"W2"},{"i":21,"abbr":"CHC","name":"Cubs","full":"Chicago Cubs","city":"Chi Cubs","lg":1,"div":1,"divName":"NL Central","w":69,"l":50,"pct":0.57983,"pyth":0.58672,"rs":614,"ra":507,"gp":119,"rem":43,"gb":"5.5","wcgb":"+6.0","l10":"7-3","streak":"W1"},{"i":22,"abbr":"STL","name":"Cardinals","full":"St. Louis Cardinals","city":"St. Louis","lg":1,"div":1,"divName":"NL Central","w":59,"l":59,"pct":0.5,"pyth":0.49295,"rs":515,"ra":523,"gp":118,"rem":44,"gb":"15.0","wcgb":"3.5","l10":"5-5","streak":"W1"},{"i":23,"abbr":"PIT","name":"Pirates","full":"Pittsburgh Pirates","city":"Pittsburgh","lg":1,"div":1,"divName":"NL Central","w":58,"l":62,"pct":0.48333,"pyth":0.51624,"rs":602,"ra":581,"gp":120,"rem":42,"gb":"17.0","wcgb":"5.5","l10":"3-7","streak":"L1"},{"i":24,"abbr":"CIN","name":"Reds","full":"Cincinnati Reds","city":"Cincinnati","lg":1,"div":1,"divName":"NL Central","w":56,"l":61,"pct":0.47863,"pyth":0.43503,"rs":482,"ra":556,"gp":117,"rem":45,"gb":"17.5","wcgb":"6.0","l10":"6-4","streak":"L3"},{"i":25,"abbr":"LAD","name":"Dodgers","full":"Los Angeles Dodgers","city":"LA Dodgers","lg":1,"div":2,"divName":"NL West","w":70,"l":48,"pct":0.59322,"pyth":0.61931,"rs":591,"ra":453,"gp":118,"rem":44,"gb":"-","wcgb":"-","l10":"2-8","streak":"L1"},{"i":26,"abbr":"AZ","name":"D-backs","full":"Arizona Diamondbacks","city":"Arizona","lg":1,"div":2,"divName":"NL West","w":63,"l":56,"pct":0.52941,"pyth":0.50428,"rs":537,"ra":532,"gp":119,"rem":43,"gb":"7.5","wcgb":"-","l10":"6-4","streak":"W1"},{"i":27,"abbr":"SD","name":"Padres","full":"San Diego Padres","city":"San Diego","lg":1,"div":2,"divName":"NL West","w":62,"l":57,"pct":0.52101,"pyth":0.49101,"rs":504,"ra":514,"gp":119,"rem":43,"gb":"8.5","wcgb":"1.0","l10":"7-3","streak":"W2"},{"i":28,"abbr":"SF","name":"Giants","full":"San Francisco Giants","city":"San Francisco","lg":1,"div":2,"divName":"NL West","w":49,"l":69,"pct":0.41525,"pyth":0.44919,"rs":492,"ra":550,"gp":118,"rem":44,"gb":"21.0","wcgb":"13.5","l10":"3-7","streak":"L2"},{"i":29,"abbr":"COL","name":"Rockies","full":"Colorado Rockies","city":"Colorado","lg":1,"div":2,"divName":"NL West","w":46,"l":72,"pct":0.38983,"pyth":0.41971,"rs":568,"ra":678,"gp":118,"rem":44,"gb":"24.0","wcgb":"16.5","l10":"4-6","streak":"L1"}],"games":[[0,2,4],[0,3,6],[0,11,14],[0,0,13],[0,10,28],[0,9,25],[1,7,8],[1,12,1],[1,2,4],[1,3,6],[1,24,5],[1,11,14],[1,0,13],[1,10,28],[1,9,25],[2,3,6],[2,0,13],[2,10,28],[2,7,8],[2,12,1],[2,2,4],[2,24,5],[2,9,25],[2,11,14],[3,7,8],[3,12,1],[3,24,5],[3,2,4],[3,16,6],[3,11,14],[4,2,23],[4,5,8],[4,27,7],[4,3,0],[4,1,4],[4,12,10],[4,9,14],[4,11,13],[5,5,8],[5,1,4],[5,3,0],[5,27,7],[5,12,10],[5,16,6],[5,2,23],[5,9,14],[5,11,13],[6,3,0],[6,2,23],[6,1,4],[6,27,7],[6,5,8],[6,16,6],[6,11,13],[6,9,14],[6,12,10],[7,3,0],[7,8,23],[7,26,2],[7,13,9],[7,15,6],[7,5,21],[8,1,3],[8,8,23],[8,28,7],[8,4,0],[8,26,2],[8,13,9],[8,15,6],[8,12,20],[8,18,11],[8,5,21],[8,14,10],[9,8,23],[9,15,6],[9,5,21],[9,26,2],[9,1,3],[9,28,7],[9,4,0],[9,13,9],[9,12,20],[9,18,11],[9,14,10],[10,28,7],[10,4,0],[10,13,9],[10,15,5],[10,12,20],[10,1,3],[10,18,11],[10,14,10],[11,4,1],[11,28,2],[11,0,3],[11,19,5],[11,8,9],[11,13,10],[11,14,11],[11,7,29],[11,6,27],[11,21,12],[12,4,1],[12,0,3],[12,14,11],[12,13,10],[12,19,5],[12,8,9],[12,21,12],[12,28,2],[12,7,29],[12,6,27],[13,0,3],[13,4,1],[13,8,9],[13,13,10],[13,19,5],[13,14,11],[13,7,29],[13,28,2],[13,21,12],[13,6,27],[14,0,8],[14,2,17],[14,11,5],[14,7,14],[14,6,13],[14,16,12],[15,0,8],[15,2,17],[15,10,1],[15,9,4],[15,11,5],[15,3,22],[15,7,14],[15,6,13],[15,16,12],[16,0,8],[16,7,14],[16,16,12],[16,2,17],[16,10,1],[16,9,4],[16,11,5],[16,3,22],[16,6,13],[17,3,22],[17,10,1],[17,9,4],[18,25,8],[18,9,7],[18,10,19],[18,27,0],[18,12,4],[18,2,1],[18,11,20],[18,5,6],[18,16,14],[18,3,13],[19,2,1],[19,2,1],[19,25,8],[19,5,6],[19,12,4],[19,9,7],[19,10,19],[19,27,0],[19,11,20],[19,3,13],[19,16,14],[20,2,1],[20,12,4],[20,9,7],[20,25,8],[20,27,0],[20,5,6],[20,11,20],[20,10,19],[20,3,13],[20,16,14],[21,19,0],[21,12,2],[21,8,6],[21,13,11],[21,5,10],[21,3,29],[21,1,14],[22,19,0],[22,4,7],[22,12,2],[22,8,6],[22,17,9],[22,13,11],[22,5,10],[22,3,29],[22,1,14],[23,13,11],[23,3,29],[23,12,2],[23,19,0],[23,4,7],[23,8,6],[23,17,9],[23,5,10],[23,1,14],[24,4,7],[24,5,10],[24,2,3],[24,17,9],[24,0,11],[24,13,12],[25,8,7],[25,8,7],[25,14,23],[25,2,3],[25,6,5],[25,0,11],[25,26,10],[25,4,9],[25,1,27],[25,13,12],[26,8,7],[26,14,23],[26,2,3],[26,0,11],[26,4,9],[26,6,5],[26,26,10],[26,1,27],[26,13,12],[27,2,3],[27,14,23],[27,8,7],[27,26,10],[27,4,9],[27,0,11],[27,13,12],[27,1,27],[27,6,5],[28,14,2],[28,7,3],[28,26,9],[28,6,8],[28,4,13],[29,7,3],[29,6,8],[29,10,16],[29,14,2],[29,29,1],[29,0,15],[29,26,9],[29,23,5],[29,11,12],[29,4,13],[30,6,8],[30,4,13],[30,11,12],[30,7,3],[30,10,16],[30,14,2],[30,29,1],[30,0,15],[30,26,9],[30,23,5],[31,0,15],[31,10,16],[31,11,12],[31,29,1],[31,23,5],[32,29,8],[32,14,18],[32,19,1],[32,3,4],[32,9,2],[32,10,0],[32,7,6],[32,5,22],[32,12,13],[32,11,26],[33,29,8],[33,19,1],[33,3,4],[33,14,18],[33,9,2],[33,7,6],[33,10,0],[33,5,22],[33,11,26],[33,12,13],[34,29,8],[34,9,2],[34,14,18],[34,19,1],[34,3,4],[34,10,0],[34,7,6],[34,5,22],[34,12,13],[34,11,26],[35,5,7],[35,8,4],[35,3,19],[35,1,6],[35,12,14],[36,13,0],[36,5,7],[36,8,4],[36,3,19],[36,1,6],[36,2,11],[36,9,10],[36,12,14],[37,5,7],[37,1,6],[37,8,4],[37,13,0],[37,3,19],[37,2,11],[37,9,10],[37,12,14],[38,13,0],[38,9,10],[38,8,5],[38,2,11],[38,6,14],[39,9,23],[39,20,3],[39,13,7],[39,2,0],[39,8,5],[39,4,11],[39,12,29],[39,15,10],[39,6,14],[39,1,26],[40,20,3],[40,2,0],[40,13,7],[40,9,23],[40,4,11],[40,15,10],[40,8,5],[40,12,29],[40,1,26],[40,6,14],[41,9,23],[41,13,7],[41,2,0],[41,15,10],[41,8,5],[41,4,11],[41,12,29],[41,6,14],[41,1,26],[41,20,3],[42,4,3],[42,18,8],[42,6,28],[43,0,1],[43,0,1],[43,4,3],[43,18,8],[43,7,2],[43,5,9],[43,19,11],[43,14,13],[43,10,12],[43,6,28],[44,18,8],[44,6,28],[44,4,3],[44,0,1],[44,7,2],[44,5,9],[44,19,11],[44,14,13],[44,10,12],[45,5,9],[45,19,11],[45,7,2],[45,0,1],[45,10,13],[45,14,12],[46,23,8],[46,0,16],[46,3,1],[46,24,4],[46,21,2],[46,7,9],[46,29,5],[46,11,6],[46,10,13],[46,14,12],[47,23,8],[47,24,4],[47,11,6],[47,7,9],[47,29,5],[47,21,2],[47,0,16],[47,3,1],[47,10,13],[47,14,12],[48,21,2],[48,10,13],[48,0,16],[48,24,4],[48,7,9],[48,23,8],[48,14,12],[48,11,6],[48,29,5],[48,3,1]],"h2h":[[0,6,5,3,8,4,5,5,0,5,1,2,5,0,3],[3,0,4,5,4,4,1,4,2,6,2,4,2,3,2],[5,5,0,5,3,6,1,2,5,3,1,2,2,4,3],[3,2,4,0,3,4,2,1,4,5,5,2,3,1,3],[2,3,6,4,0,1,3,2,2,0,3,0,1,3,4],[2,3,0,2,5,0,4,6,3,7,1,2,3,5,4],[1,2,5,1,4,3,0,6,5,5,4,3,2,2,2],[1,2,1,3,1,4,4,0,6,4,2,2,4,2,3],[3,4,2,2,1,3,2,0,0,6,2,4,4,6,3],[2,0,0,1,0,3,8,3,4,0,1,1,5,1,3],[2,1,5,1,3,2,2,4,5,2,0,9,1,3,6],[1,2,1,4,4,1,0,4,2,5,4,0,7,3,2],[1,1,1,4,2,3,4,3,2,1,7,3,0,4,4],[0,3,3,2,0,1,1,1,0,2,3,4,2,0,6],[3,2,0,3,2,2,1,0,3,0,4,4,2,5,0]],"divrec":[[22,13],[16,16],[18,19],[12,17],[15,18],[20,13],[19,18],[18,15],[11,18],[18,22],[19,18],[16,20],[18,12],[15,15],[15,18]],"learec":[[52,29],[46,36],[47,37],[42,40],[34,40],[47,41],[45,38],[39,41],[42,43],[32,51],[46,40],[40,42],[40,43],[28,42],[31,48]]}</script><!--DATA-END-->
 
 <script>
 "use strict";
@@ -1561,6 +1603,180 @@ function chart4(acc) {
       oddsTxt(r.d), oddsTxt(r.w), oddsTxt(r.tot)]), { ab: [0] });
 }
 
+/* ===========================================================================
+   MAGIC NUMBERS — pure arithmetic on games already played. No simulation, so
+   this section ignores every control on the page.
+
+   For club A to be guaranteed to finish strictly ahead of club B, A must beat
+   B's best possible finish. B can reach at most (W_b + games B has left) wins,
+   so A needs one more than that:
+
+       M(a,b) = (W_b + remaining_b) - W_a + 1
+
+   Every A win lifts W_a by one; every B loss drops B's ceiling by one. So M is
+   exactly the count of "A wins plus B losses" still required, and A has clinched
+   when it hits zero.
+
+   The same expression read from the other side is B's elimination number, since
+   M(a,b) is what it takes for A to pass B, and therefore what it takes for B to
+   be sunk relative to A. One number, two readings — which is why one grid says
+   everything.
+
+   Note this is the traditional strict form: MLB now breaks a tie on head-to-head
+   rather than a game 163, so a club can still reach October while tied. Treat
+   these as the conservative answer.
+=========================================================================== */
+function magicTable(w, l) {
+  const M = new Int16Array(NAL * NAL);
+  for (let a = 0; a < NAL; a++) {
+    for (let b = 0; b < NAL; b++) {
+      if (a === b) continue;
+      M[a * NAL + b] = (w[b] + (162 - w[b] - l[b])) - w[a] + 1;
+    }
+  }
+  return M;
+}
+const curW = () => { const w = new Int16Array(NAL); for (let i = 0; i < NAL; i++) w[i] = T[i].w; return w; };
+const curL = () => { const l = new Int16Array(NAL); for (let i = 0; i < NAL; i++) l[i] = T[i].l; return l; };
+
+// Yesterday's table, when the refresh script captured it.
+function prevMagic() {
+  if (!D.prev || !D.prev.w) return null;
+  const w = new Int16Array(NAL), l = new Int16Array(NAL);
+  for (let i = 0; i < NAL; i++) {
+    const ab = T[i].abbr;
+    if (!(ab in D.prev.w)) return null;
+    w[i] = D.prev.w[ab]; l[i] = D.prev.l[ab];
+  }
+  return { M: magicTable(w, l), date: D.prev.date };
+}
+
+function divisionNumber(M, a) {
+  // Clinch the division = finish ahead of all four rivals, so the hardest one.
+  // Eliminated from it = the first rival that becomes uncatchable.
+  let clinch = -Infinity, elim = Infinity;
+  for (let b = 0; b < NAL; b++) {
+    if (b === a || DIV[b] !== DIV[a]) continue;
+    clinch = Math.max(clinch, M[a * NAL + b]);
+    elim = Math.min(elim, M[b * NAL + a]);
+  }
+  return { clinch, elim };
+}
+// How many clubs could still finish above A. Six or fewer means a berth is safe.
+function canPass(M, a) {
+  let n = 0;
+  for (let b = 0; b < NAL; b++) if (b !== a && M[b * NAL + a] > 0) n++;
+  return n;
+}
+const mgCell = v => v <= 0 ? '✓' : v;
+
+function renderMagic() {
+  const M = magicTable(curW(), curL()), prev = prevMagic();
+  const nice = new Date(D.lastGameDate + 'T12:00:00')
+    .toLocaleDateString(undefined, { month: 'long', day: 'numeric' });
+  el('mgAsOf').textContent = `through ${nice}`;
+
+  // --- who is Toronto chasing? Everyone above the third wild card line.
+  const lead = [-1, -1, -1];
+  for (let i = 0; i < NAL; i++) { const d = DIV[i]; if (lead[d] < 0 || T[i].pct > T[lead[d]].pct) lead[d] = i; }
+  const chase = [];
+  for (let i = 0; i < NAL; i++) if (lead.indexOf(i) < 0) chase.push(i);
+  chase.sort((a, b) => T[b].pct - T[a].pct || T[b].w - T[a].w);
+  const wc3 = chase[2];
+  const ahead = chase.filter(i => i !== TOR && (T[i].pct > T[TOR].pct ||
+    (T[i].pct === T[TOR].pct && T[i].w > T[TOR].w)));
+
+  const dn = divisionNumber(M, TOR);
+  const passers = canPass(M, TOR);
+
+  const figs = [
+    ['To catch ' + T[wc3].abbr, mgCell(M[TOR * NAL + wc3]), 'Jays wins + ' + T[wc3].abbr + ' losses'],
+    ['Before ' + T[wc3].abbr + ' is safe', mgCell(M[wc3 * NAL + TOR]), T[wc3].abbr + ' wins + Jays losses'],
+    ['Clubs to pass', String(ahead.length), 'sit above the last wild card'],
+    ['Could pass Toronto', String(passers), 'six or fewer clinches a berth'],
+    ['Win the East', dn.clinch <= 0 ? '✓' : dn.clinch, 'wins + losses by the East'],
+    ['Games left', String(T[TOR].rem), 'the ceiling on any magic number'],
+  ];
+  const fb = el('mgFigs'); fb.textContent = '';
+  for (const [label, val, sub] of figs) {
+    const d = document.createElement('div');
+    const v = document.createElement('div'); v.className = 'v'; v.textContent = val;
+    const lb = document.createElement('div'); lb.className = 'l'; lb.textContent = label;
+    const s2 = document.createElement('div');
+    s2.className = 'l'; s2.style.textTransform = 'none'; s2.style.letterSpacing = '0';
+    s2.style.opacity = '.75'; s2.textContent = sub;
+    d.append(v, lb, s2); fb.append(d);
+  }
+
+  // --- the ladder Toronto has to climb
+  const delta = (now, was) => {
+    if (was === null || was === undefined) return '';
+    const d = now - was;
+    return d === 0 ? 'no change' : (d > 0 ? '+' + d + ' worse' : d + ' better');
+  };
+  const rows = ahead.map(i => {
+    const m = M[TOR * NAL + i], e = M[i * NAL + TOR];
+    const wasM = prev ? prev.M[TOR * NAL + i] : null;
+    return [T[i].abbr, T[i].city, `${T[i].w}-${T[i].l}`, gb(T[i].wcgb), T[i].rem,
+      mgCell(m), mgCell(e), prev ? delta(m, wasM) : '—'];
+  });
+  table(el('mgPath'),
+    ['', 'Club above the line', 'W-L', 'WCGB', 'Left', 'Jays need', 'They need', 'Since yesterday'],
+    rows, { ab: [0] });
+
+  // --- every club
+  const trows = [];
+  for (const i of AL_IDS) {
+    const d = divisionNumber(M, i), cp = canPass(M, i);
+    trows.push([T[i].abbr, T[i].city, `${T[i].w}-${T[i].l}`, T[i].rem,
+      d.clinch <= 0 ? '✓ won' : d.clinch, d.elim <= 0 ? '✗ out' : d.elim,
+      cp, cp <= 5 ? '✓ in' : '']);
+  }
+  trows.sort((a, b) => a[6] - b[6]);
+  table(el('mgTable'),
+    ['', 'Club', 'W-L', 'Left', 'Division clinch', 'Division elim', 'Can pass them', 'Berth'],
+    trows, { ab: [0] });
+
+  // --- the 15x15 grid
+  const host = el('mgGrid'); host.textContent = '';
+  const order = AL_IDS.slice().sort((a, b) => T[b].pct - T[a].pct);
+  const t = document.createElement('table');
+  const thead = document.createElement('thead'), hr = document.createElement('tr');
+  const corner = document.createElement('th');
+  corner.textContent = 'needs ↓ over →'; corner.style.fontSize = '8.5px';
+  hr.append(corner);
+  for (const j of order) { const e = document.createElement('th'); e.textContent = T[j].abbr; hr.append(e); }
+  thead.append(hr); t.append(thead);
+  const tb = document.createElement('tbody');
+  for (const i of order) {
+    const tr = document.createElement('tr');
+    if (i === TOR) tr.className = 'me';
+    const rh = document.createElement('td'); rh.className = 'ab'; rh.textContent = T[i].abbr;
+    tr.append(rh);
+    for (const j of order) {
+      const td = document.createElement('td');
+      if (i === j) { td.textContent = '·'; td.style.color = 'var(--rule2)'; }
+      else {
+        const m = M[i * NAL + j];
+        const room = (162 - T[i].gp) + (162 - T[j].gp);   // most events still available
+        if (m <= 0) { td.textContent = '✓'; td.className = 'pos'; td.style.fontWeight = '700'; }
+        else if (m > room) { td.textContent = '✗'; td.className = 'neg'; }
+        else {
+          td.textContent = m;
+          if (m <= 10) td.style.fontWeight = '700';
+          else if (m > 40) td.style.color = 'var(--muted)';
+        }
+        td.title = `${T[i].abbr} needs ${m <= 0 ? 'nothing — already ahead for good'
+          : m > room ? 'more than is left; cannot happen' : m + ' (its wins + ' + T[j].abbr + ' losses)'}`
+          + ` to finish guaranteed above ${T[j].abbr}`;
+      }
+      tr.append(td);
+    }
+    tb.append(tr);
+  }
+  t.append(tb); host.append(t);
+}
+
 function schedView(p) {
   el('scount').textContent = `${T[TOR].rem} games · ${SERIES.length} series`;
   table(el('sched'), ['Dates', '', 'Opponent', 'Their record', 'G', 'Rate', 'Exp. wins'],
@@ -1725,6 +1941,7 @@ buildOppRows();
 buildTeamRows();
 buildMatchupSheet();
 buildStandings();
+renderMagic();          // static: depends only on real results, never on the controls
 wireTabs(document.querySelector('.rail .tabs'));
 wireTabs(document.querySelector('main .tabs'), () => drawCharts());
 apply(false);
