@@ -248,7 +248,8 @@ input[type=range]:disabled{opacity:.4; cursor:default}
 .figs .l{font-size:9.5px; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); margin-top:2px}
 
 /* ---- charts ---- */
-.chart{position:relative}
+.chart{position:relative; overflow-anchor:none}
+.figs,.outbar,#mgKey{overflow-anchor:none}
 .chart svg{display:block; width:100%; overflow:visible}
 #tip{
   position:fixed; z-index:60; pointer-events:none; opacity:0; transition:opacity .07s;
@@ -953,7 +954,7 @@ function doApply(live) {
   const C = compile();
   lastC = C;
   paintInstant(C);
-  syncControls(C);
+  syncControls(C, live);
   clearTimeout(settleTimer);
   if (live) {
     runToken++;
@@ -1238,7 +1239,7 @@ function filterMatchups() {
 
 /* Push cfg into every widget, so the rail and the matchup sheet can never
    disagree — they are two views of one state. */
-function syncControls(C) {
+function syncControls(C, live) {
   const p = C.p;
   let expW = 0, gamesLeft = 0;
   for (const pr of TOR_PAIRS) {
@@ -1298,7 +1299,7 @@ function syncControls(C) {
     r.mod.textContent = pct3(modelRate(pr, pr.a, p));
   }
   filterMatchups();
-  schedView(p);
+  if (!live) schedView(p);        // ~400 nodes; not per drag frame
 }
 
 /* ===========================================================================
@@ -1461,6 +1462,14 @@ function paintOdds(acc, provisional) {
     REF.st[i].odds.textContent = oddsTxt(acc.playoff[i] / n);
     REF.st[i].div.textContent = oddsTxt(acc.divw[i] / n);
   }
+  // Everything above is an in-place text write. What follows tears down and
+  // rebuilds about a thousand DOM nodes, so it runs ONCE when the value settles
+  // rather than on every drag frame. Doing it per frame swamped a phone and, worse,
+  // kept deleting the node the browser uses as its scroll anchor — which made the
+  // page slide and bounce the moment you touched a slider.
+  if (!provisional) rebuildFigures(acc);
+}
+function rebuildFigures(acc) {
   charts.length = 0;
   chart1(acc); chart2(acc); chart3(acc); chart4(acc);
   drawCharts();
@@ -2126,7 +2135,11 @@ buildStandings();
 renderMagic();          // static: depends only on real results, never on the controls
 drawMagic();
 wireTabs(document.querySelector('.rail .tabs'));
-wireTabs(document.querySelector('main .tabs'), () => { drawCharts(); drawMagic(); });
+wireTabs(document.querySelector('main .tabs'), () => {
+  if (lastAcc && !el('p-fc').hidden) rebuildFigures(lastAcc);
+  if (lastC && !el('p-sc').hidden) schedView(lastC.p);
+  drawCharts(); drawMagic();
+});
 apply(false);
 </script>
 </body>
