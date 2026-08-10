@@ -104,14 +104,15 @@ a{color:var(--ink)}
   font-size:10.5px; text-transform:uppercase; letter-spacing:.12em; color:var(--ink2); margin-top:6px;
 }
 .grow{flex:1 1 40px}
-.mast-odds{display:flex; align-items:baseline; gap:8px; padding-bottom:2px}
+.mast-odds{display:flex; align-items:center; gap:9px; padding-bottom:2px}
 /* min-width stops "4.3%" -> "100.0%" changing the masthead's width, which would
    re-wrap the flex row and shove the page down mid-drag. */
 .mast-odds .n{
   font-family:var(--f-display); font-size:30px; font-weight:700; line-height:1;
   min-width:3.3em; font-variant-numeric:tabular-nums;
 }
-.mast-odds .k{font-size:9.5px; text-transform:uppercase; letter-spacing:.11em; color:var(--muted); max-width:84px; line-height:1.3}
+.mast-odds .k{font-size:9.5px; text-transform:uppercase; letter-spacing:.1em;
+  color:var(--muted); max-width:118px; line-height:1.35}
 .mast.settling .mast-odds .n{color:var(--ink2)}
 #prog{height:2px; background:var(--ink); width:0; transition:width .08s linear}
 
@@ -272,6 +273,12 @@ thead th{
 tbody td{border-bottom:1px solid var(--rule)}
 tbody tr:hover td{background:var(--tint)}
 .ab{font-family:var(--f-num); font-size:11px; letter-spacing:.02em; font-weight:700}
+.mark{
+  display:inline-flex; align-items:center; justify-content:center; width:23px; height:23px;
+  border-radius:50%; font-family:var(--f-num); font-size:8.5px; font-weight:700;
+  letter-spacing:0; flex:none; vertical-align:middle; line-height:1;
+}
+.mast h1 .mark{width:26px; height:26px; font-size:9.5px; margin-right:9px; vertical-align:-4px}
 tr.me td{font-weight:700}
 tr.me td:first-child{box-shadow:inset 3px 0 0 var(--ink)}
 tr.grp td{
@@ -362,6 +369,11 @@ tr.model td.res{color:var(--ink2)}
 .filters{display:flex; gap:14px; align-items:center; flex-wrap:wrap; margin-bottom:9px; font-size:12px; color:var(--ink2)}
 .filters label{display:inline-flex; gap:6px; align-items:center}
 
+.whatif{
+  border-left:3px solid var(--ink); background:var(--tint); padding:9px 12px;
+  font-size:12.5px; color:var(--ink2); margin:0 0 14px;
+}
+.whatif b{color:var(--ink)}
 .prose{font-size:13px; color:var(--ink2); max-width:72ch}
 .prose p{margin:0 0 13px}
 .prose b{color:var(--ink); font-weight:600}
@@ -630,8 +642,9 @@ tr.model td.res{color:var(--ink2)}
         <div id="rtBusy" class="lede" style="color:var(--ink)"></div>
         <div class="chart" id="cRoot"></div>
         <div class="barkey" style="margin-top:9px">
-          <span><i class="sw" style="background:var(--s1)"></i>Root for the club on the left</span>
-          <span><i class="sw" style="background:var(--s2)"></i>Root for the club on the right</span>
+          <span><i class="sw" style="background:var(--s1)"></i>Root for the <b>home</b> club</span>
+          <span><i class="sw" style="background:var(--s2)"></i>Root for the <b>away</b> club</span>
+          <span style="color:var(--muted)">Longer bar = matters more</span>
         </div>
         <details><summary>Table</summary><div class="tscroll" id="tRoot"></div></details>
       </section>
@@ -653,6 +666,23 @@ tr.model td.res{color:var(--ink2)}
         </div>
         <details><summary>Table</summary><div class="tscroll" id="tHist"></div></details>
       </section>
+      <section class="sec">
+        <div class="hd"><h2 id="dotTitle">Every game, by series</h2><span class="kicker" id="dotCount"></span></div>
+        <p class="lede">One dot per game played, in order, grouped into series with the opponent
+          underneath. Filled and raised is a win, hollow and dropped is a loss — the height says it as
+          well as the colour, so it reads either way.</p>
+        <p class="lede"><b>Click any dot to rewrite it.</b> The season is replayed with your change,
+          every record and tiebreaker recomputed, and the odds re-simulated from the altered history.
+          Rewritten games get a ring. It is the counterfactual: what if that one had gone the other way?</p>
+        <div id="whatifBar"></div>
+        <div class="chart" id="cDots"></div>
+        <div class="barkey" style="margin-top:9px">
+          <span><i class="sw" style="background:var(--good); border-radius:50%"></i>Won</span>
+          <span><i class="sw" style="border:2px solid var(--crit); border-radius:50%; background:transparent"></i>Lost</span>
+          <span style="color:var(--muted)">Underlined series = at home</span>
+        </div>
+      </section>
+
       <section class="sec">
         <div class="hd"><h2>Games above .500, day by day</h2><span class="kicker">All season</span></div>
         <p class="lede">The same replay, but just the record. Above the line is a winning season.</p>
@@ -725,6 +755,51 @@ for (const t of T) { DIV[t.i] = t.div; LG[t.i] = t.lg; }
 const LEAGUE = [[], []];
 for (const t of T) LEAGUE[t.lg].push(t.i);
 const LGNAME = ['American League', 'National League'];
+/* Club colours, so every table can carry a recognisable mark. These stand in for
+   the real logos, which are MLB trademarks and would need fetching from their
+   servers — not something to bake into a public page without asking. */
+const CLUBCOL = {
+  ARI: '#A71930', AZ: '#A71930', ATL: '#CE1141', BAL: '#DF4601', BOS: '#BD3039',
+  CHC: '#0E3386', CWS: '#27251F', CHW: '#27251F', CIN: '#C6011F', CLE: '#0C2340',
+  COL: '#333366', DET: '#0C2340', HOU: '#002D62', KC: '#004687', LAA: '#BA0021',
+  LAD: '#005A9C', MIA: '#00A3E0', MIL: '#12284B', MIN: '#002B5C', NYM: '#002D72',
+  NYY: '#132448', ATH: '#003831', OAK: '#003831', PHI: '#E81828', PIT: '#FDB827',
+  SD: '#2F241D', SF: '#FD5A1E', SEA: '#0C2C56', STL: '#C41E3A', TB: '#092C5C',
+  TEX: '#003278', TOR: '#134A8E', WSH: '#AB0003',
+};
+const relLum = hex => {
+  const c = hex.replace('#', '');
+  const lin = v => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+  return 0.2126 * lin(parseInt(c.slice(0, 2), 16)) + 0.7152 * lin(parseInt(c.slice(2, 4), 16))
+    + 0.0722 * lin(parseInt(c.slice(4, 6), 16));
+};
+const ratio = (a, b) => { const x = relLum(a), y = relLum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+// white or ink on the mark, whichever actually reads on that colour
+function inkOn(hex) { return ratio(hex, '#ffffff') >= ratio(hex, '#111111') ? '#ffffff' : '#111111'; }
+/* A few club colours are bright enough that neither white nor near-black clears
+   4.5:1 on them — the Phillies' red lands at 4.13. Rather than drop the club or
+   fudge the check, darken the mark until its label is legible. It stays the club's
+   colour, just a shade deeper. */
+function legible(hex) {
+  let c = hex;
+  for (let i = 0; i < 24; i++) {
+    if (Math.max(ratio(c, '#ffffff'), ratio(c, '#111111')) >= 4.5) return c;
+    const n = c.replace('#', '');
+    const dim = v => Math.round(parseInt(v, 16) * 0.92).toString(16).padStart(2, '0');
+    c = '#' + dim(n.slice(0, 2)) + dim(n.slice(2, 4)) + dim(n.slice(4, 6));
+  }
+  return c;
+}
+function mark(i, size) {
+  const col = legible(CLUBCOL[T[i].abbr] || '#555555');
+  const e = document.createElement('span');
+  e.className = 'mark';
+  e.style.cssText = `background:${col}; color:${inkOn(col)}`
+    + (size ? `; width:${size}px; height:${size}px; font-size:${Math.round(size * 0.38)}px` : '');
+  e.textContent = T[i].abbr;
+  e.title = T[i].full;
+  return e;
+}
 const DIVNAMES = [['AL East', 'AL Central', 'AL West'], ['NL East', 'NL Central', 'NL West']];
 
 /* Every unordered pair of clubs with games left. This is the unit of control:
@@ -837,6 +912,7 @@ const cfg = {
   lock: false,
   str: new Float64Array(NT).fill(NaN),
   pair: new Map(),
+  flip: new Set(),          // finished games whose result has been rewritten
 };
 function strengths() {
   const p = new Float64Array(NT);
@@ -1388,8 +1464,8 @@ function buildMatchupSheet() {
     const tr = document.createElement('tr');
     if (pr.a === FOCUS || pr.b === FOCUS) tr.classList.add('me');
     const name = document.createElement('td');
-    name.className = 'ab';
-    name.textContent = `${T[pr.a].abbr} · ${T[pr.b].abbr}`;
+    name.style.whiteSpace = 'nowrap';
+    name.append(mark(pr.a, 19), mark(pr.b, 19));
     name.title = `${T[pr.a].full} vs ${T[pr.b].full}`;
     const g = document.createElement('td'); g.textContent = pr.n;
     const mtd = document.createElement('td');
@@ -1540,7 +1616,7 @@ function buildStandings() {
     if (i === FOCUS) tr.className = 'me';
     const diff = T[i].rs - T[i].ra;
     const rank = document.createElement('td'); rank.style.color = 'var(--muted)';
-    const abTd = document.createElement('td'); abTd.className = 'ab'; abTd.textContent = T[i].abbr;
+    const abTd = document.createElement('td'); abTd.append(mark(i));
     const nmTd = document.createElement('td'); nmTd.textContent = T[i].city;
     tr.append(rank, abTd, nmTd);
     for (const v of [`${T[i].w}-${T[i].l}`, gb(T[i].gb), sgn(diff), T[i].l10, T[i].streak, T[i].rem]) {
@@ -1765,6 +1841,11 @@ function focusLabels() {
     + 'Everything on the page moves as you drag.';
   el('keyMine').textContent = `${f.abbr} needs, to pass them`;
   el('keyTheirs').textContent = `They need, to bury ${f.abbr}`;
+  // the club mark beside the masthead title
+  const h1 = el('mastTitle');
+  h1.textContent = '';
+  h1.append(mark(FOCUS), document.createTextNode(`${f.name} Playoff Watch`));
+  clubProse();                 // dateline and method text are club-specific too
 }
 function setFocus(i) {
   FOCUS = i;
@@ -2292,6 +2373,164 @@ function schedView(p) {
 }
 
 /* ===========================================================================
+   WHAT IF — rewrite finished games and replay the season around the change.
+
+   cfg.flip holds the indexes of finished games whose result has been reversed.
+   Every record, head-to-head tally and tiebreaker is then rebuilt from that
+   altered history, so the change propagates the way it really would: a flipped
+   game is a win moved from one club to another, not a free win.
+
+   T[i].w / .l are rewritten to the counterfactual so the whole page speaks with
+   one voice; the untouched originals stay in .w0 / .l0. Runs are not archived per
+   game, so run differential and Pythagorean record keep their real values.
+=========================================================================== */
+for (const t of T) { t.w0 = t.w; t.l0 = t.l; }
+// snapshots of the untouched season, so clearing every flip restores the official
+// standings rather than the replay (which differs by one on the known feed quirk)
+const baseW0 = Int16Array.from(baseW), baseH0 = Int16Array.from(baseH);
+const baseDv0 = Int16Array.from(baseDv), baseLg0 = Int16Array.from(baseLg);
+
+function applyFlips() {
+  if (!cfg.flip.size) {                       // back to the real season, exactly
+    for (const t of T) {
+      t.w = t.w0; t.l = t.l0; t.gp = t.w + t.l; t.rem = 162 - t.gp;
+      t.pct = t.gp ? +(t.w / t.gp).toFixed(5) : 0.5;
+    }
+    baseW.set(baseW0); baseH.set(baseH0); baseDv.set(baseDv0); baseLg.set(baseLg0);
+    histData = null; rootData = null;
+    return;
+  }
+  const W = new Int16Array(NT), L = new Int16Array(NT);
+  const h = new Int16Array(NT * NT), dv = new Int16Array(NT), lg = new Int16Array(NT);
+  for (let k = 0; k < NP; k++) {
+    let res = uRes[k];
+    if (cfg.flip.has(k)) res = res ? 0 : 1;
+    const hm = uHome[k], aw = uAway[k];
+    const w = res ? hm : aw, l = res ? aw : hm;
+    W[w]++; L[l]++;
+    if (LG[w] === LG[l]) { h[w * NT + l]++; lg[w]++; if (DIV[w] === DIV[l]) dv[w]++; }
+  }
+  for (const t of T) {
+    t.w = W[t.i]; t.l = L[t.i];
+    t.gp = t.w + t.l; t.rem = 162 - t.gp;
+    t.pct = t.gp ? +(t.w / t.gp).toFixed(5) : 0.5;
+  }
+  baseW.set(W); baseDv.set(dv); baseLg.set(lg); baseH.set(h);
+  histData = null; rootData = null;
+}
+function resetFlips() { cfg.flip.clear(); applyFlips(); rebuildAll(); }
+function rebuildAll() {
+  REF.opp = {}; REF.st = {};
+  focusLabels(); buildOppRows(); buildStandings(); renderMagic();
+  apply(false); drawMagic(); drawDots();
+  if (!el('p-me').hidden) renderBacktest();
+}
+function whatIfBar() {
+  const box = el('whatifBar'); box.textContent = '';
+  if (!cfg.flip.size) return;
+  const t = T[FOCUS];
+  const real = `${t.w0}-${t.l0}`, now = `${t.w}-${t.l}`;
+  const d = t.w - t.w0;
+  const div = document.createElement('div');
+  div.className = 'whatif';
+  const strong = document.createElement('b');
+  strong.textContent = `${cfg.flip.size} game${cfg.flip.size > 1 ? 's' : ''} rewritten`;
+  div.append(strong, document.createTextNode(
+    ` — ${t.city} would be ${now} instead of ${real}`
+    + (d ? ` (${d > 0 ? '+' : ''}${d} win${Math.abs(d) > 1 ? 's' : ''})` : ' (same record, different opponents)')
+    + '. Odds above reflect that history.'));
+  const b = document.createElement('button');
+  b.className = 'mini'; b.textContent = 'Put it all back';
+  b.style.marginLeft = '10px';
+  b.onclick = resetFlips;
+  div.append(b);
+  box.append(div);
+}
+
+/* One dot per finished game, grouped into series. Height carries the result as
+   well as colour, so it survives colour blindness and greyscale printing. */
+function focusPlayedSeries() {
+  const mine = [];
+  for (let k = 0; k < NP; k++) if (uHome[k] === FOCUS || uAway[k] === FOCUS) mine.push(k);
+  mine.sort((a, b) => uDate[a] - uDate[b]);
+  const out = [];
+  for (const k of mine) {
+    const o = uHome[k] === FOCUS ? uAway[k] : uHome[k], home = uHome[k] === FOCUS ? 1 : 0;
+    const prev = out[out.length - 1];
+    if (prev && prev.opp === o && prev.home === home && uDate[k] - prev.last <= 1) {
+      prev.games.push(k); prev.last = uDate[k];
+    } else out.push({ opp: o, home, games: [k], first: uDate[k], last: uDate[k] });
+  }
+  return out;
+}
+function drawDots() {
+  const host = el('cDots');
+  const ser = focusPlayedSeries();
+  const won = k => {
+    const r = cfg.flip.has(k) ? (uRes[k] ? 0 : 1) : uRes[k];
+    return (r ? uHome[k] : uAway[k]) === FOCUS;
+  };
+  let w = 0, l = 0;
+  for (const sr of ser) for (const k of sr.games) (won(k) ? w++ : l++);
+  el('dotCount').textContent = `${w}-${l} in ${ser.length} series`;
+  el('dotTitle').textContent = `Every ${T[FOCUS].city} game, by series`;
+  whatIfBar();
+
+  const W = host.clientWidth || 640;
+  const DOT = 9, GAP = 3, SGAP = 13, LANE = 62, PAD = 8;
+  // lay the series out left to right, wrapping onto new lanes
+  const lanes = [[]];
+  let x = PAD;
+  for (const sr of ser) {
+    const wide = sr.games.length * DOT + (sr.games.length - 1) * GAP;
+    if (x + wide > W - PAD && lanes[lanes.length - 1].length) { lanes.push([]); x = PAD; }
+    sr.x = x; sr.w = wide;
+    lanes[lanes.length - 1].push(sr);
+    x += wide + SGAP;
+  }
+  const H = lanes.length * LANE + 10;
+  host.textContent = '';
+  const g = s('svg', { viewBox: `0 0 ${W} ${H}`, height: H, role: 'img' });
+  lanes.forEach((lane, li) => {
+    const midY = li * LANE + 24;
+    g.append(s('line', { x1: PAD, x2: W - PAD, y1: midY, y2: midY, stroke: 'var(--rule)', 'stroke-width': 1 }));
+    for (const sr of lane) {
+      sr.games.forEach((k, gi) => {
+        const cx = sr.x + gi * (DOT + GAP) + DOT / 2;
+        const win = won(k);
+        const cy = midY + (win ? -DOT : DOT);
+        const dot = s('circle', {
+          cx, cy, r: DOT / 2,
+          fill: win ? 'var(--good)' : 'transparent',
+          stroke: win ? 'var(--good)' : 'var(--crit)', 'stroke-width': 2,
+          style: 'cursor:pointer',
+        });
+        g.append(dot);
+        if (cfg.flip.has(k)) g.append(s('circle', { cx, cy, r: DOT / 2 + 3.5, fill: 'none',
+          stroke: 'var(--ink)', 'stroke-width': 1.5 }));
+        const hit = s('circle', { cx, cy, r: 11, fill: 'transparent', style: 'cursor:pointer' });
+        const label = `${fmtDay(D.dates[uDate[k]])} ${sr.home ? 'vs' : 'at'} ${T[sr.opp].abbr}`;
+        onProbe(hit, e => showTip(e, label, [
+          [win ? 'Won' : 'Lost', cfg.flip.has(k) ? 'rewritten' : 'as it happened',
+            win ? 'var(--good)' : 'var(--crit)'],
+          ['Click', 'flip this result', null]]), hideTip);
+        hit.addEventListener('click', () => {
+          if (cfg.flip.has(k)) cfg.flip.delete(k); else cfg.flip.add(k);
+          applyFlips(); rebuildAll();
+        });
+        g.append(hit);
+      });
+      const lab = txt(sr.x + sr.w / 2, midY + DOT + 19, T[sr.opp].abbr,
+        { 'text-anchor': 'middle', 'font-family': 'var(--f-num)', 'font-size': 8.5,
+          fill: 'var(--ink2)' });
+      if (sr.home) lab.setAttribute('text-decoration', 'underline');
+      g.append(lab);
+    }
+  });
+  host.append(g);
+}
+
+/* ===========================================================================
    BACKTEST — score the model against every game it could have predicted.
 
    One pass down the timeline. Before applying each finished result, work out what
@@ -2411,7 +2650,7 @@ function chartCal() {
 =========================================================================== */
 function encodeState() {
   const o = { v: 1, f: FOCUS, h: Math.round(cfg.hfa * 1000), r: cfg.reg,
-    y: Math.round(cfg.pyw * 100), k: cfg.lock ? 1 : 0, s: {}, p: {} };
+    y: Math.round(cfg.pyw * 100), k: cfg.lock ? 1 : 0, s: {}, p: {}, x: [...cfg.flip] };
   for (let i = 0; i < NT; i++) if (!Number.isNaN(cfg.str[i])) o.s[i] = Math.round(cfg.str[i] * 1000);
   for (const [key, v] of cfg.pair) o.p[key] = [v.mode === 'pin' ? 1 : 0, Math.round(v.v * 1000)];
   const raw = JSON.stringify(o);
@@ -2429,6 +2668,9 @@ function decodeState(str) {
     cfg.lock = !!o.k;
     cfg.str.fill(NaN);
     for (const i in o.s || {}) cfg.str[+i] = o.s[i] / 1000;
+    cfg.flip.clear();
+    for (const k of o.x || []) if (k >= 0 && k < NP) cfg.flip.add(k);
+    applyFlips();
     cfg.pair.clear();
     for (const key in o.p || {}) {
       const [isPin, v] = o.p[key];
@@ -2519,7 +2761,7 @@ function chartRooting() {
   }
   const rows = rootData;
   const W = host.clientWidth || 640, rowH = 26;
-  const m = { t: 12, r: 20, b: 32, l: 96 };
+  const m = { t: 12, r: 20, b: 42, l: 96 };
   const H = m.t + rowH * rows.length + m.b, pw = W - m.l - m.r;
   const top = Math.max(...rows.map(r => Math.abs(r.swing)), 0.001);
   const mid = m.l + pw / 2;
@@ -2529,10 +2771,11 @@ function chartRooting() {
     const x = mid + tv * (pw / 2);
     g.append(s('line', { x1: x, x2: x, y1: m.t, y2: m.t + rowH * rows.length,
       stroke: tv === 0 ? 'var(--ink)' : 'var(--rule)', 'stroke-width': 1 }));
-    g.append(txt(x, H - 12, (Math.abs(tv * top) * 100).toFixed(1) + '%', { 'text-anchor': 'middle' }));
+    g.append(txt(x, H - 20, (Math.abs(tv * top) * 100).toFixed(1) + '%', { 'text-anchor': 'middle' }));
   }
-  g.append(txt(m.l, H - 12, 'swing in your odds', { 'text-anchor': 'start', 'font-size': 9,
-    'letter-spacing': '.08em' }));
+  // its own line under the ticks, so the caption cannot sit on top of a number
+  g.append(txt(mid, H - 6, 'SWING IN YOUR ODDS', { 'text-anchor': 'middle', 'font-size': 9,
+    'letter-spacing': '.09em' }));
   const bh = Math.min(13, rowH - 9);
   rows.forEach((r, k) => {
     const y = m.t + k * rowH + (rowH - bh) / 2;
@@ -2777,7 +3020,7 @@ function showHistory() {
   el('hiAsOf').textContent = `replayed to ${fmtDay(D.lastGameDate)}`;
   el('hiKey1').textContent = 'Odds to reach October';
   el('hiKey2').textContent = T[FOCUS].city;
-  chartWalk();
+  chartWalk(); drawDots();
   if (histData) { chartHistory(); return; }
   el('hiBusy').textContent = 'Replaying the season…';
   buildHistory(() => { chartHistory(); el('hiBusy').textContent = ''; });
@@ -2881,10 +3124,10 @@ el('theme').onclick = () => {
   drawCharts();
 };
 let rt = null;
-new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(() => { drawCharts(); drawMagic(); if (!el('p-hi').hidden) { chartWalk(); chartHistory(); }
+new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(() => { drawCharts(); drawMagic(); if (!el('p-hi').hidden) { chartWalk(); chartHistory(); drawDots(); }
   if (!el('p-me').hidden) chartCal(); }, 80); }).observe(document.querySelector('main'));
 
-{
+function clubProse() {
   const d = new Date(D.lastGameDate + 'T12:00:00');
   const nice = d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
   el('asof').textContent =
@@ -2939,8 +3182,7 @@ FOCUS_PAIRS = PAIRS_OF[FOCUS].slice().sort((x, y) =>
   y.n - x.n || T[other(x, FOCUS)].abbr.localeCompare(T[other(y, FOCUS)].abbr));
 FOCUS_GAMES = GAMES_OF[FOCUS];
 SERIES = buildSeries();
-TOUGH = FOCUS_PAIRS.reduce((a, pr) => a + (T[other(pr, FOCUS)].pct > 0.5 ? pr.n : 0), 0);
-syncModel();
+TOUGH = FOCUS_PAIRS.reduce((a, pr) => a + (T[other(pr, FOCUS)].pct > 0.5 ? pr.n : 0), 0);syncModel();
 buildFocusPicker();
 focusLabels();
 buildOppRows();
