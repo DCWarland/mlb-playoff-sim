@@ -113,9 +113,10 @@ def main():
     NAL = len(al)
 
     rs, ra = defaultdict(int), defaultdict(int)
-    h2h = [[0] * NAL for _ in range(NAL)]
-    divrec = [[0, 0] for _ in range(NAL)]
-    learec = [[0, 0] for _ in range(NAL)]
+    NT = len(order)
+    h2h = [[0] * NT for _ in range(NT)]
+    divrec = [[0, 0] for _ in range(NT)]
+    learec = [[0, 0] for _ in range(NT)]
     remaining, dates, date_idx = [], [], {}
     last_final = ""
 
@@ -132,7 +133,9 @@ def main():
                 rs[hi] += h["score"]; ra[hi] += a["score"]
                 rs[ai] += a["score"]; ra[ai] += h["score"]
                 wi, li = (hi, ai) if h.get("isWinner") else (ai, hi)
-                if wi < NAL and li < NAL:
+                # Tiebreakers only count games inside a club's own league, so
+                # interleague results move the record but nothing else.
+                if order[wi]["lg"] == order[li]["lg"]:
                     h2h[wi][li] += 1
                     learec[wi][0] += 1
                     learec[li][1] += 1
@@ -140,14 +143,12 @@ def main():
                         divrec[wi][0] += 1
                         divrec[li][1] += 1
             elif state == "S":
-                # Only games that can move an AL team's record matter here.
-                # Postponed games ("D") are skipped: MLB already lists the
-                # makeup date as its own scheduled game.
-                if hi < NAL or ai < NAL:
-                    if day["date"] not in date_idx:
-                        date_idx[day["date"]] = len(dates)
-                        dates.append(day["date"])
-                    remaining.append([date_idx[day["date"]], ai, hi])
+                # Every remaining game in both leagues. Postponed games ("D") are
+                # skipped: MLB already lists the makeup as its own scheduled game.
+                if day["date"] not in date_idx:
+                    date_idx[day["date"]] = len(dates)
+                    dates.append(day["date"])
+                remaining.append([date_idx[day["date"]], ai, hi])
 
     for m in order:
         i = m["i"]
@@ -163,7 +164,7 @@ def main():
     for _, a, h in remaining:
         left[a] += 1
         left[h] += 1
-    bad = [(m["abbr"], left[m["i"]], m["rem"]) for m in al if left[m["i"]] != m["rem"]]
+    bad = [(m["abbr"], left[m["i"]], m["rem"]) for m in order if left[m["i"]] != m["rem"]]
     if bad:
         print("WARNING: scheduled game counts do not reconcile with games played:", bad)
         print("The simulation still runs, but a team's season may not total 162 games.")
@@ -190,11 +191,38 @@ def main():
     except (OSError, ValueError, KeyError):
         prev = None
 
+    # ---- the season archive -------------------------------------------------
+    # One row per day: the date and every club's win-loss record. Only raw facts
+    # are stored, never derived odds, so the model can change later and the whole
+    # history stays consistent because it gets recomputed from these.
+    # This is the one thing that cannot be backfilled — a day not recorded is
+    # gone — so it is written even when nothing else changed.
+    hist_path = os.path.join(HERE, "history.json")
+    try:
+        hist = json.load(open(hist_path, encoding="utf-8"))
+        if not isinstance(hist, dict) or "days" not in hist:
+            hist = {"season": SEASON, "days": []}
+    except (OSError, ValueError):
+        hist = {"season": SEASON, "days": []}
+    if hist.get("season") != SEASON:
+        hist = {"season": SEASON, "days": []}
+
+    abbrs = [m["abbr"] for m in order]
+    today_row = {"d": last_final, "w": [m["w"] for m in order], "l": [m["l"] for m in order]}
+    days = [d for d in hist["days"] if d.get("d") != last_final]
+    days.append(today_row)
+    days.sort(key=lambda d: d["d"])
+    hist = {"season": SEASON, "abbrs": abbrs, "days": days}
+    json.dump(hist, open(hist_path, "w", encoding="utf-8"), separators=(",", ":"))
+    print(f"Archive: {len(days)} day(s) recorded, {days[0]['d']} to {days[-1]['d']}.")
+
     keep = ("i", "abbr", "name", "full", "city", "lg", "div", "divName", "w", "l",
             "pct", "pyth", "rs", "ra", "gp", "rem", "gb", "wcgb", "l10", "streak")
     out = {
         "lastGameDate": last_final,
         "prev": prev,
+        # inlined so the page needs no second request and still works offline
+        "hist": hist,
         "nAL": NAL,
         "dates": dates,
         "teams": [{k: m[k] for k in keep} for m in order],
