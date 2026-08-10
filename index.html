@@ -39,6 +39,17 @@
   --f-display: Charter, "Bitstream Charter", Georgia, "Times New Roman", serif;
   --f-ui: "Helvetica Neue", Helvetica, Arial, sans-serif;
   --f-num: Menlo, "SF Mono", ui-monospace, monospace;
+  /* Heat ramp for the magic-number grid: ONE hue, six steps, h1 = nearly settled
+     through h6 = a long way off. The same six values serve both themes with the
+     mapping reversed, so "settled" is always the most prominent step (11.4:1 on
+     its surface) and "far off" always recedes into it (1.5:1). Each step carries
+     the text colour that clears 4.5:1 on it. */
+  --h1:#0d366b; --h1t:#ffffff;
+  --h2:#184f95; --h2t:#ffffff;
+  --h3:#256abf; --h3t:#ffffff;
+  --h4:#3987e5; --h4t:#171512;
+  --h5:#6da7ec; --h5t:#171512;
+  --h6:#b7d3f6; --h6t:#171512;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -48,6 +59,13 @@
     --rule:#332f28; --rule2:#463f35; --tint:#221f1a;
     --s1:#3987e5; --s2:#d95926; --deemph:#8a8378;
     --good:#0ca30c; --crit:#e07a6a;
+  /* reversed against the dark ground: lightest = settled, darkest = recedes */
+  --h1:#b7d3f6; --h1t:#171512;
+  --h2:#6da7ec; --h2t:#171512;
+  --h3:#3987e5; --h3t:#171512;
+  --h4:#256abf; --h4t:#ffffff;
+  --h5:#184f95; --h5t:#ffffff;
+  --h6:#0d366b; --h6t:#ffffff;
   }
 }
 :root[data-theme="dark"]{
@@ -57,6 +75,13 @@
   --rule:#332f28; --rule2:#463f35; --tint:#221f1a;
   --s1:#3987e5; --s2:#d95926; --deemph:#8a8378;
   --good:#0ca30c; --crit:#e07a6a;
+  /* reversed against the dark ground: lightest = settled, darkest = recedes */
+  --h1:#b7d3f6; --h1t:#171512;
+  --h2:#6da7ec; --h2t:#171512;
+  --h3:#3987e5; --h3t:#171512;
+  --h4:#256abf; --h4t:#ffffff;
+  --h5:#184f95; --h5t:#ffffff;
+  --h6:#0d366b; --h6t:#ffffff;
 }
 
 *{box-sizing:border-box}
@@ -279,15 +304,35 @@ summary:hover{color:var(--ink)}
 .tot b{color:var(--ink); font-family:var(--f-num); font-size:11.5px}
 .presets{display:flex; flex-wrap:wrap; gap:4px; margin-top:4px}
 
-/* the magic-number grid: tight cells, and a frozen first column so the row you
-   are reading stays identified while you scroll sideways on a phone */
-#mgGrid table{font-size:11px}
-#mgGrid th,#mgGrid td{padding:3px 5px; text-align:right}
+/* The magic-number grid, drawn as a mosaic. 2px of surface between cells does
+   the separating rather than borders, and the first column is frozen so the row
+   you are reading stays identified while you scroll sideways on a phone. */
+#mgGrid table{font-size:10.5px; border-collapse:separate; border-spacing:2px}
+#mgGrid th,#mgGrid td{padding:4px 3px; text-align:center; border-bottom:0; min-width:26px}
+#mgGrid thead th{background:var(--paper); font-size:9px; letter-spacing:.03em; padding-bottom:4px}
 #mgGrid thead th:first-child,#mgGrid tbody td:first-child{
   position:sticky; left:0; background:var(--paper); text-align:left; z-index:1;
+  padding-right:7px; min-width:38px;
 }
 #mgGrid tbody tr:hover td:first-child{background:var(--tint)}
-#mgGrid thead th{background:var(--paper)}
+#mgGrid td.h1{background:var(--h1); color:var(--h1t)}
+#mgGrid td.h2{background:var(--h2); color:var(--h2t)}
+#mgGrid td.h3{background:var(--h3); color:var(--h3t)}
+#mgGrid td.h4{background:var(--h4); color:var(--h4t)}
+#mgGrid td.h5{background:var(--h5); color:var(--h5t)}
+#mgGrid td.h6{background:var(--h6); color:var(--h6t)}
+#mgGrid td.hdone{background:var(--ink); color:var(--paper); font-weight:700}
+#mgGrid td.hnone{color:var(--muted); background:transparent}
+#mgGrid td.hself{color:var(--rule2); background:transparent}
+#mgGrid tbody tr.me td:first-child{box-shadow:inset 3px 0 0 var(--ink)}
+
+/* the scale legend that a sequential encoding always needs */
+.heatkey{display:flex; align-items:center; gap:0; flex-wrap:wrap; margin:0 0 13px; font-size:10px}
+.heatkey .lab{color:var(--muted); text-transform:uppercase; letter-spacing:.1em;
+  font-weight:700; margin-right:9px}
+.heatkey .sw{width:auto; height:auto; padding:3px 7px; margin-right:2px; font-family:var(--f-num);
+  font-size:10px; border-radius:0}
+.heatkey .end{color:var(--muted); margin-left:7px}
 
 /* matchup sheet */
 #mtbl td{padding:2px 7px}
@@ -514,7 +559,16 @@ tr.model td.res{color:var(--ink2)}
           it is settled. Nothing here is simulated or predicted — it is only games already played, so
           the sliders have no effect on this tab. It moves once a day, on real results.</p>
         <div class="figs" id="mgFigs"></div>
-        <div class="tscroll" id="mgPath" style="margin-top:22px"></div>
+        <h3 style="font-size:14px; margin:24px 0 3px">Who settles it first</h3>
+        <p class="lede" style="margin-bottom:10px">Shorter bar means closer to decided. The rule marks
+          Toronto's remaining games — a bar left of it could be finished by that club's own results
+          alone, without needing any help.</p>
+        <div class="chart" id="mgChart"></div>
+        <div class="barkey" style="margin-top:8px">
+          <span><i class="sw" style="background:var(--s1)"></i>Toronto needs, to pass them</span>
+          <span><i class="sw" style="background:var(--s2)"></i>They need, to bury Toronto</span>
+        </div>
+        <details><summary>Table</summary><div class="tscroll" id="mgPath"></div></details>
       </section>
 
       <section class="sec">
@@ -531,6 +585,7 @@ tr.model td.res{color:var(--ink2)}
           other club. Read a <b>column</b> for what would knock that club below each rival — the two are
           the same number seen from opposite ends. <b>✓</b> means already settled, <b>✗</b> means no
           longer possible. Small numbers are close to decided.</p>
+        <div class="heatkey" id="mgKey"></div>
         <div class="tscroll" id="mgGrid"></div>
       </section>
     </div>
@@ -1670,6 +1725,103 @@ function canPass(M, a) {
 }
 const mgCell = v => v <= 0 ? '✓' : v;
 
+/* Heat buckets. One sequential ramp, h1 = nearly settled through h6 = a long way
+   off, with the two terminal states outside the ramp: settled gets solid ink,
+   impossible gets no fill at all so it reads as absence. The number stays printed
+   in every cell, so colour is a second channel rather than the only one. */
+const HEAT_STOPS = [
+  [5, 'h1', '1–5'], [15, 'h2', '6–15'], [30, 'h3', '16–30'],
+  [50, 'h4', '31–50'], [75, 'h5', '51–75'], [Infinity, 'h6', '76+'],
+];
+function heatClass(m, room) {
+  if (m <= 0) return 'hdone';
+  if (m > room) return 'hnone';
+  for (const [lim, cls] of HEAT_STOPS) if (m <= lim) return cls;
+  return 'h6';
+}
+function buildHeatKey() {
+  const box = el('mgKey'); box.textContent = '';
+  const lab = document.createElement('span'); lab.className = 'lab';
+  lab.textContent = 'Events still needed'; box.append(lab);
+  const done = document.createElement('span');
+  done.className = 'sw hdone';
+  done.style.cssText = 'background:var(--ink); color:var(--paper); font-weight:700';
+  done.textContent = '✓ settled'; box.append(done);
+  for (const [, cls, label] of HEAT_STOPS) {
+    const sw = document.createElement('span');
+    sw.className = 'sw';
+    sw.style.cssText = `background:var(--${cls}); color:var(--${cls}t)`;
+    sw.textContent = label; box.append(sw);
+  }
+  const none = document.createElement('span');
+  none.className = 'end'; none.textContent = '✗ no longer possible';
+  box.append(none);
+}
+
+/* "Who settles it first" — grouped horizontal bars, one pair per club above the
+   wild-card line. Two series, so a legend is always present; the values are
+   direct-labelled at the bar ends. */
+const magicCharts = [];
+function chartMagic(M, ahead) {
+  const host = el('mgChart');
+  const rows = ahead.map(i => ({
+    i, mine: Math.max(0, M[TOR * NAL + i]), theirs: Math.max(0, M[i * NAL + TOR]),
+  }));
+  magicCharts.push(() => {
+    host.textContent = '';
+    const W = host.clientWidth || 640;
+    const rowH = 34, barH = 11;
+    const m = { t: 10, r: 54, b: 34, l: 46 };
+    const H = m.t + rowH * rows.length + m.b, pw = W - m.l - m.r;
+    const maxV = Math.max(...rows.map(r => Math.max(r.mine, r.theirs)), T[TOR].rem) * 1.02;
+    const X = v => (v / maxV) * pw;
+    const g = s('svg', { viewBox: `0 0 ${W} ${H}`, height: H, role: 'img' });
+
+    for (let v = 0; v <= maxV; v += 10) {
+      g.append(s('line', { x1: m.l + X(v), x2: m.l + X(v), y1: m.t, y2: m.t + rowH * rows.length,
+        stroke: 'var(--rule)', 'stroke-width': 1 }));
+      g.append(txt(m.l + X(v), H - 20, v, { 'text-anchor': 'middle' }));
+    }
+    g.append(txt(m.l, H - 5, 'COMBINED WINS + LOSSES STILL NEEDED',
+      { 'text-anchor': 'start', 'letter-spacing': '.09em', 'font-size': 9 }));
+
+    // the ceiling on what Toronto can do unaided
+    const rx = m.l + X(T[TOR].rem);
+    g.append(s('line', { x1: rx, x2: rx, y1: m.t - 4, y2: m.t + rowH * rows.length,
+      stroke: 'var(--ink)', 'stroke-width': 1 }));
+    g.append(txt(rx, m.t - 8, `${T[TOR].rem} games left`,
+      { 'text-anchor': rx > W - m.r - 70 ? 'end' : 'middle', fill: 'var(--ink)', 'font-weight': 700 }));
+
+    rows.forEach((r, k) => {
+      const y0 = m.t + k * rowH;
+      g.append(txt(m.l - 8, y0 + rowH / 2 - 1, T[r.i].abbr, {
+        'text-anchor': 'end', 'dominant-baseline': 'middle', 'font-family': 'var(--f-num)',
+        'font-size': 10.5, 'font-weight': 700, fill: 'var(--ink)',
+      }));
+      const bars = [[r.mine, 'var(--s1)', y0 + 4], [r.theirs, 'var(--s2)', y0 + 4 + barH + 2]];
+      for (const [v, colour, y] of bars) {
+        g.append(s('rect', { x: m.l, y, width: Math.max(1, X(v)), height: barH, fill: colour }));
+        g.append(txt(m.l + X(v) + 6, y + barH / 2, v,
+          { 'dominant-baseline': 'middle', fill: 'var(--ink)', 'font-size': 10 }));
+      }
+      const hit = s('rect', { x: 0, y: y0, width: W, height: rowH, fill: 'transparent' });
+      hit.addEventListener('mousemove', e => showTip(e, `${T[r.i].full} · ${T[r.i].w}-${T[r.i].l}`, [
+        ['Toronto needs', r.mine, 'var(--s1)'],
+        ['They need', r.theirs, 'var(--s2)'],
+        ['Toronto games left', T[TOR].rem, null],
+        [r.theirs <= T[r.i].rem ? 'They could finish it unaided' : 'They need Toronto to lose too', '', null],
+      ]));
+      hit.addEventListener('mouseleave', hideTip);
+      g.append(hit);
+    });
+    host.append(g);
+  });
+}
+function drawMagic() {
+  if (el('p-mg').hidden) return;
+  for (const f of magicCharts) f();
+}
+
 function renderMagic() {
   const M = magicTable(curW(), curL()), prev = prevMagic();
   const nice = new Date(D.lastGameDate + 'T12:00:00')
@@ -1723,6 +1875,9 @@ function renderMagic() {
   table(el('mgPath'),
     ['', 'Club above the line', 'W-L', 'WCGB', 'Left', 'Jays need', 'They need', 'Since yesterday'],
     rows, { ab: [0] });
+  magicCharts.length = 0;
+  chartMagic(M, ahead);
+  buildHeatKey();
 
   // --- every club
   const trows = [];
@@ -1755,17 +1910,12 @@ function renderMagic() {
     tr.append(rh);
     for (const j of order) {
       const td = document.createElement('td');
-      if (i === j) { td.textContent = '·'; td.style.color = 'var(--rule2)'; }
+      if (i === j) { td.textContent = '·'; td.className = 'hself'; }
       else {
         const m = M[i * NAL + j];
         const room = (162 - T[i].gp) + (162 - T[j].gp);   // most events still available
-        if (m <= 0) { td.textContent = '✓'; td.className = 'pos'; td.style.fontWeight = '700'; }
-        else if (m > room) { td.textContent = '✗'; td.className = 'neg'; }
-        else {
-          td.textContent = m;
-          if (m <= 10) td.style.fontWeight = '700';
-          else if (m > 40) td.style.color = 'var(--muted)';
-        }
+        td.className = heatClass(m, room);
+        td.textContent = m <= 0 ? '✓' : m > room ? '✗' : m;
         td.title = `${T[i].abbr} needs ${m <= 0 ? 'nothing — already ahead for good'
           : m > room ? 'more than is left; cannot happen' : m + ' (its wins + ' + T[j].abbr + ' losses)'}`
           + ` to finish guaranteed above ${T[j].abbr}`;
@@ -1887,7 +2037,7 @@ el('theme').onclick = () => {
   drawCharts();
 };
 let rt = null;
-new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(drawCharts, 80); }).observe(document.querySelector('main'));
+new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(() => { drawCharts(); drawMagic(); }, 80); }).observe(document.querySelector('main'));
 
 {
   const d = new Date(D.lastGameDate + 'T12:00:00');
@@ -1942,8 +2092,9 @@ buildTeamRows();
 buildMatchupSheet();
 buildStandings();
 renderMagic();          // static: depends only on real results, never on the controls
+drawMagic();
 wireTabs(document.querySelector('.rail .tabs'));
-wireTabs(document.querySelector('main .tabs'), () => drawCharts());
+wireTabs(document.querySelector('main .tabs'), () => { drawCharts(); drawMagic(); });
 apply(false);
 </script>
 </body>
