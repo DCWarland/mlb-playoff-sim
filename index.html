@@ -1277,6 +1277,9 @@ function runPrecise(C) {
     el('mast').classList.remove('settling');
     lastAcc = acc;
     paintOdds(acc, false);
+    // Tonight and Season are keyed to the scenario, so a settled change refreshes them
+    if (!el('p-rt').hidden) showRooting();
+    if (!el('p-hi').hidden) showHistory();
   })();
 }
 
@@ -1905,7 +1908,7 @@ function setFocus(i) {
   buildStandings();
   renderMagic();
   apply(false);
-  drawMagic();
+  refreshVisible();          // the open tab must follow the club, not wait for a click
 }
 
 /* ===========================================================================
@@ -2463,8 +2466,20 @@ function resetFlips() { cfg.flip.clear(); applyFlips(); rebuildAll(); }
 function rebuildAll() {
   REF.opp = {}; REF.st = {};
   focusLabels(); buildOppRows(); buildStandings(); renderMagic();
-  apply(false); drawMagic(); drawDots();
+  apply(false); refreshVisible();
+}
+
+/* Whatever tab is on screen has to be re-derived whenever the club, the scenario
+   or the model changes. Marking its data stale is not enough: if the tab is
+   already open, nothing redraws it and it goes on showing the previous club's
+   answer until you happen to click away and back. */
+function refreshVisible() {
+  if (!el('p-fc').hidden && lastAcc) rebuildFigures(lastAcc);
+  if (!el('p-sc').hidden && lastC) schedView(lastC.p);
+  if (!el('p-hi').hidden) showHistory();
+  if (!el('p-rt').hidden) showRooting();
   if (!el('p-me').hidden) renderBacktest();
+  drawCharts(); drawMagic();
 }
 function whatIfBar() {
   const box = el('whatifBar'); box.textContent = '';
@@ -3152,9 +3167,7 @@ function syncModel() {
 for (const id of ['hfa', 'reg', 'pyw']) {
   el(id).addEventListener('input', () => { syncModel(); apply(true); });
   el(id).addEventListener('change', () => {
-    syncModel(); histData = null; apply(false);
-    if (!el('p-hi').hidden) showHistory();
-    if (!el('p-me').hidden) renderBacktest();   // re-score against reality
+    syncModel(); histData = null; rootData = null; apply(false); refreshVisible();
   });
 }
 el('share').onclick = shareLink;
@@ -3239,14 +3252,7 @@ renderMagic();          // static: depends only on real results, never on the co
 renderBacktest();       // likewise: scored on games already played
 drawMagic();
 wireTabs(document.querySelector('.rail .tabs'));
-wireTabs(document.querySelector('main .tabs'), () => {
-  if (lastAcc && !el('p-fc').hidden) rebuildFigures(lastAcc);
-  if (lastC && !el('p-sc').hidden) schedView(lastC.p);
-  if (!el('p-hi').hidden) showHistory();
-  if (!el('p-rt').hidden) showRooting();
-  if (!el('p-me').hidden) { renderBacktest(); }
-  drawCharts(); drawMagic();
-});
+wireTabs(document.querySelector('main .tabs'), refreshVisible);
 apply(false);
 </script>
 </body>
