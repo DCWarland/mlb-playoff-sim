@@ -117,7 +117,7 @@ def main():
     h2h = [[0] * NT for _ in range(NT)]
     divrec = [[0, 0] for _ in range(NT)]
     learec = [[0, 0] for _ in range(NT)]
-    remaining, dates, date_idx = [], [], {}
+    remaining, played, dates, date_idx = [], [], [], {}
     last_final = ""
 
     for day in schedule:
@@ -130,6 +130,11 @@ def main():
                 if h.get("score") is None or a.get("score") is None:
                     continue
                 last_final = max(last_final, day["date"])
+                if day["date"] not in date_idx:
+                    date_idx[day["date"]] = len(dates)
+                    dates.append(day["date"])
+                # 1 = the home club won. Enough to replay the season day by day.
+                played.append([date_idx[day["date"]], ai, hi, 1 if h.get("isWinner") else 0])
                 rs[hi] += h["score"]; ra[hi] += a["score"]
                 rs[ai] += a["score"]; ra[ai] += h["score"]
                 wi, li = (hi, ai) if h.get("isWinner") else (ai, hi)
@@ -216,6 +221,15 @@ def main():
     json.dump(hist, open(hist_path, "w", encoding="utf-8"), separators=(",", ":"))
     print(f"Archive: {len(days)} day(s) recorded, {days[0]['d']} to {days[-1]['d']}.")
 
+    # date_idx was filled in feed order; sort it so index order is chronological
+    order_dates = sorted(range(len(dates)), key=lambda k: dates[k])
+    remap = {old: new for new, old in enumerate(order_dates)}
+    dates = [dates[k] for k in order_dates]
+    remaining = [[remap[d], a, h] for d, a, h in remaining]
+    played = [[remap[d], a, h, r] for d, a, h, r in played]
+    remaining.sort(key=lambda g: g[0])
+    played.sort(key=lambda g: g[0])
+
     keep = ("i", "abbr", "name", "full", "city", "lg", "div", "divName", "w", "l",
             "pct", "pyth", "rs", "ra", "gp", "rem", "gb", "wcgb", "l10", "streak")
     out = {
@@ -227,6 +241,7 @@ def main():
         "dates": dates,
         "teams": [{k: m[k] for k in keep} for m in order],
         "games": remaining,
+        "played": played,
         "h2h": h2h,
         "divrec": divrec,
         "learec": learec,
