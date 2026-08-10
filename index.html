@@ -907,7 +907,12 @@ function buildSeries() {
     const k = FOCUS_GAMES[j];
     const o = gHome[k] === FOCUS ? gAway[k] : gHome[k], home = gHome[k] === FOCUS ? 1 : 0, d = D.games[k][0];
     const prev = out[out.length - 1];
-    if (prev && prev.opp === o && prev.home === home && d - prev.d1 <= 1) { prev.n++; prev.d1 = d; }
+    // A series is consecutive games against the same opponent at the same park.
+    // Deliberately no date test: clubs get off days mid-series (Washington opened
+    // at Chicago on the 26th, idle the 27th, back on the 28th) and a gap like that
+    // does not start a new series. What ends one is a different opponent, which
+    // walking the club's own schedule in order already catches.
+    if (prev && prev.opp === o && prev.home === home) { prev.n++; prev.d1 = d; }
     else out.push({ opp: o, home, n: 1, d0: d, d1: d });
   }
   return out;
@@ -2513,7 +2518,8 @@ function focusPlayedSeries() {
   for (const k of mine) {
     const o = uHome[k] === FOCUS ? uAway[k] : uHome[k], home = uHome[k] === FOCUS ? 1 : 0;
     const prev = out[out.length - 1];
-    if (prev && prev.opp === o && prev.home === home && uDate[k] - prev.last <= 1) {
+    // same rule as the remaining schedule: an off day does not split a series
+    if (prev && prev.opp === o && prev.home === home) {
       prev.games.push(k); prev.last = uDate[k];
     } else out.push({ opp: o, home, games: [k], first: uDate[k], last: uDate[k] });
   }
@@ -2842,10 +2848,21 @@ function chartRooting() {
     const w = Math.abs(X(r.swing) - mid);
     g.append(s('rect', { x: r.swing >= 0 ? mid : mid - w, y, width: Math.max(1, w), height: bh,
       fill: r.swing >= 0 ? 'var(--s1)' : 'var(--s2)' }));
-    const lx = r.swing >= 0 ? mid + w + 7 : mid - w - 7;
-    g.append(txt(lx, y + bh / 2, `${T[favour].abbr} +${(Math.abs(r.swing) * 100).toFixed(1)}`, {
-      'text-anchor': r.swing >= 0 ? 'start' : 'end', 'dominant-baseline': 'middle',
-      fill: 'var(--ink)', 'font-weight': k === 0 ? 700 : 400, 'font-size': 10 }));
+    // The longest bar reaches the edge, so a label placed beyond its end lands on
+    // top of the row labels. When there is no room outside, set it inside the bar
+    // instead and flip the ink so it still reads against the fill.
+    const str = `${T[favour].abbr} +${(Math.abs(r.swing) * 100).toFixed(1)}`;
+    const lw = str.length * 5.8 + 8;
+    const right = r.swing >= 0;
+    const fitsOut = right ? (mid + w + 7 + lw) < (W - 2) : (mid - w - 7 - lw) > (m.l + 2);
+    const inside = !fitsOut && w > lw + 10;
+    g.append(txt(
+      inside ? (right ? mid + w - 6 : mid - w + 6) : (right ? mid + w + 7 : mid - w - 7),
+      y + bh / 2, str, {
+        'text-anchor': inside ? (right ? 'end' : 'start') : (right ? 'start' : 'end'),
+        'dominant-baseline': 'middle', 'font-size': inside ? 9.5 : 10,
+        fill: inside ? 'var(--paper)' : 'var(--ink)',
+        'font-weight': k === 0 ? 700 : 400 }));
     const hit = s('rect', { x: 0, y: m.t + k * rowH, width: W, height: rowH, fill: 'transparent' });
     onProbe(hit, e => showTip(e, `${T[r.away].full} at ${T[r.home].full}`, [
       [`If ${T[r.home].abbr} win`, oddsTxt(r.ifHome), 'var(--s1)'],
