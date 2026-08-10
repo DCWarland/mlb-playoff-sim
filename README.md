@@ -53,7 +53,7 @@ and warns you if MLB's feed doesn't reconcile.
 |---|---|
 | `index.html` | The whole app — markup, styles, simulation, charts, and the baked-in data |
 | `refresh_data.py` | Downloads fresh data and injects it into `index.html` |
-| `index.html.bak` | The previous build, kept as a rollback point. Safe to delete. |
+| `history.json` | One row per day of the season, written by the refresh job |
 
 ## Layout
 
@@ -66,7 +66,23 @@ Controls live in the left rail under three tabs; views are tabbed across the top
   slider and it solves for the strength that produces it.
 - **Model** — home-field edge, regression to .500, weight on run difference
 
-**Views — Forecast / Matchups / Standings / Magic / Schedule / Method**
+**Views — Forecast / Matchups / Standings / Magic / Season / Tonight / Schedule / Method**
+
+**Any club.** Pick one from the masthead and the whole page follows it, either league.
+
+**Forecast** ends with an October funnel: the chance of surviving each round through
+to the World Series, simulated game by game with real series formats.
+
+**Season** replays the whole year. Every finished game is archived with its date and
+winner, so any past day's standings rebuild exactly and the odds can be re-simulated
+from what was known at the time. Nothing had to be collected going forward.
+
+**Tonight** ranks the next day's games by how much each one moves your odds, and tells
+you who to root for. Both branches of a game use identical random numbers, so the
+difference between them is the effect of that result rather than sampling noise.
+
+**Link** in the masthead copies a URL carrying your entire scenario — club, sliders,
+every override — so it opens for someone else exactly as you left it.
 
 **Magic** is the one tab the controls don't touch. A magic number is arithmetic on
 games already played — how many combined events (your wins plus their losses) must

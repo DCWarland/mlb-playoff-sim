@@ -389,6 +389,7 @@ tr.model td.res{color:var(--ink2)}
         <option value="20000" selected>20,000 seasons</option>
         <option value="50000">50,000 seasons</option>
       </select>
+      <button id="share" class="ghost" title="Copy a link to this exact scenario">Link</button>
       <button id="theme" class="ghost" title="Light / dark">◐</button>
     </div>
   </div>
@@ -460,6 +461,7 @@ tr.model td.res{color:var(--ink2)}
       <button role="tab" id="t-st" aria-controls="p-st" aria-selected="false">Standings</button>
       <button role="tab" id="t-mg" aria-controls="p-mg" aria-selected="false">Magic</button>
       <button role="tab" id="t-hi" aria-controls="p-hi" aria-selected="false">Season</button>
+      <button role="tab" id="t-rt" aria-controls="p-rt" aria-selected="false">Tonight</button>
       <button role="tab" id="t-sc" aria-controls="p-sc" aria-selected="false">Schedule</button>
       <button role="tab" id="t-me" aria-controls="p-me" aria-selected="false">Method</button>
     </div>
@@ -617,6 +619,24 @@ tr.model td.res{color:var(--ink2)}
       </section>
     </div>
 
+    <!-- ---------- TONIGHT ---------- -->
+    <div role="tabpanel" id="p-rt" aria-labelledby="t-rt" hidden style="padding-top:20px">
+      <section class="sec">
+        <div class="hd"><h2 id="rtTitle">Who to root for</h2><span class="kicker" id="rtDate"></span></div>
+        <p class="lede">Each game on the next day of the schedule, simulated both ways: once with the
+          home club winning, once with the away club. The bar is how much your odds move between those
+          two worlds, so the longest bar is the game that matters most tonight. Both runs use the same
+          random numbers, which cancels the noise and leaves only the real difference.</p>
+        <div id="rtBusy" class="lede" style="color:var(--ink)"></div>
+        <div class="chart" id="cRoot"></div>
+        <div class="barkey" style="margin-top:9px">
+          <span><i class="sw" style="background:var(--s1)"></i>Root for the club on the left</span>
+          <span><i class="sw" style="background:var(--s2)"></i>Root for the club on the right</span>
+        </div>
+        <details><summary>Table</summary><div class="tscroll" id="tRoot"></div></details>
+      </section>
+    </div>
+
     <!-- ---------- SEASON HISTORY ---------- -->
     <div role="tabpanel" id="p-hi" aria-labelledby="t-hi" hidden style="padding-top:20px">
       <section class="sec">
@@ -765,6 +785,17 @@ let TOUGH = FOCUS_PAIRS.reduce((a, pr) => a + (T[other(pr, FOCUS)].pct > 0.5 ? p
 
 const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+/* A "rival" game is one against a club in the same league that is still close
+   enough to the last playoff spot to be taking it from you. Those results count
+   twice: they help them and hurt you at the same time. */
+function isRival(i) {
+  if (LG[i] !== LG[FOCUS] || i === FOCUS) return false;
+  const lead = [-1, -1, -1];
+  for (const j of MYLG) { const d = DIV[j]; if (lead[d] < 0 || T[j].pct > T[lead[d]].pct) lead[d] = j; }
+  const chase = MYLG.filter(j => lead.indexOf(j) < 0).sort((a, b) => T[b].pct - T[a].pct);
+  const line = chase.length >= 3 ? T[chase[2]].pct : 0.5;
+  return T[i].pct >= line - 0.045;
+}
 const fmtDay = iso => { const p = iso.split('-'); return `${MON[+p[1] - 1]} ${+p[2]}`; };
 const fmtDow = iso => { const p = iso.split('-').map(Number); return DOW[new Date(p[0], p[1] - 1, p[2]).getDay()]; };
 function fmtSpan(a, b) {
@@ -1083,6 +1114,7 @@ function apply(live) {
   doApply(false);
 }
 function doApply(live) {
+  rootData = null;              // any change re-weighs tonight
   const C = compile();
   lastC = C;
   paintInstant(C);
@@ -1513,6 +1545,7 @@ function buildStandings() {
 /* Re-sort by projected wins. Division leaders are decided by projection too, so
    a club can take over a division mid-drag and the cut line moves with it. */
 function layoutStandings(C) {
+  if (!REF.stBody || !REF.grpDiv) return;      // not built yet
   const exp = C.exp, tb = REF.stBody;
   const better = (a, b) => exp[b] - exp[a] || T[b].pct - T[a].pct;
 
@@ -1719,14 +1752,15 @@ function focusLabels() {
 }
 function setFocus(i) {
   FOCUS = i;
-  histData = null;          // the replay is per club
+  histData = null; rootData = null;    // both are per club
   MYLG = LEAGUE[LG[FOCUS]];
   FOCUS_PAIRS = PAIRS_OF[FOCUS].slice().sort((x, y) =>
     y.n - x.n || T[other(x, FOCUS)].abbr.localeCompare(T[other(y, FOCUS)].abbr));
   FOCUS_GAMES = GAMES_OF[FOCUS];
   SERIES = buildSeries();
   TOUGH = FOCUS_PAIRS.reduce((a, pr) => a + (T[other(pr, FOCUS)].pct > 0.5 ? pr.n : 0), 0);
-  cfg.pair.clear();                    // the old club's matchup overrides no longer apply
+  // Matchup overrides are league-wide facts about the scenario, not the club's,
+  // so they survive a change of focus. Only the per-club views get rebuilt.
   REF.opp = {}; REF.st = {};
   focusLabels();
   buildOppRows();
@@ -2220,20 +2254,189 @@ function renderMagic() {
 }
 
 function schedView(p) {
-  el('scount').textContent = `${T[FOCUS].rem} games · ${SERIES.length} series`;
-  table(el('sched'), ['Dates', '', 'Opponent', 'Their record', 'G', 'Rate', 'Exp. wins'],
+  let rivalGames = 0;
+  table(el('sched'), ['Dates', '', 'Opponent', '', 'Their record', 'G', 'Rate', 'Exp. wins'],
     SERIES.map(sr => {
       const pr = PAIRS.get(PKEY(FOCUS, sr.opp)), rate = rateFor(pr, FOCUS, p);
+      const riv = isRival(sr.opp);
+      if (riv) rivalGames += sr.n;
       return [fmtSpan(D.dates[sr.d0], D.dates[sr.d1]), sr.home ? 'vs' : 'at', T[sr.opp].city,
-        `${T[sr.opp].w}-${T[sr.opp].l}`, sr.n, (rate * 100).toFixed(0) + '%', (rate * sr.n).toFixed(1)];
+        riv ? '\u2605 rival' : '', `${T[sr.opp].w}-${T[sr.opp].l}`, sr.n,
+        (rate * 100).toFixed(0) + '%', (rate * sr.n).toFixed(1)];
     }));
+  el('scount').textContent = `${T[FOCUS].rem} games · ${SERIES.length} series · ${rivalGames} vs rivals`;
   const all = [];
   for (let j = 0; j < FOCUS_GAMES.length; j++) {
     const k = FOCUS_GAMES[j], o = gHome[k] === FOCUS ? gAway[k] : gHome[k], iso = D.dates[D.games[k][0]];
     all.push([`${fmtDow(iso)} ${fmtDay(iso)}`, gHome[k] === FOCUS ? 'vs' : 'at', T[o].abbr, T[o].city,
-      `${T[o].w}-${T[o].l}`, T[o].divName, (rateFor(PAIRS.get(PKEY(FOCUS, o)), FOCUS, p) * 100).toFixed(0) + '%']);
+      isRival(o) ? '\u2605' : '', `${T[o].w}-${T[o].l}`, T[o].divName,
+      (rateFor(PAIRS.get(PKEY(FOCUS, o)), FOCUS, p) * 100).toFixed(0) + '%']);
   }
-  table(el('schedAll'), ['Date', '', '', 'Opponent', 'Their record', 'Division', 'Rate'], all, { ab: [2] });
+  table(el('schedAll'), ['Date', '', '', 'Opponent', '', 'Their record', 'Division', 'Rate'], all, { ab: [2] });
+}
+
+/* ===========================================================================
+   SHAREABLE SCENARIOS — the whole control state packed into the URL, so a
+   scenario can be texted to someone and open exactly as you left it.
+=========================================================================== */
+function encodeState() {
+  const o = { v: 1, f: FOCUS, h: Math.round(cfg.hfa * 1000), r: cfg.reg,
+    y: Math.round(cfg.pyw * 100), k: cfg.lock ? 1 : 0, s: {}, p: {} };
+  for (let i = 0; i < NT; i++) if (!Number.isNaN(cfg.str[i])) o.s[i] = Math.round(cfg.str[i] * 1000);
+  for (const [key, v] of cfg.pair) o.p[key] = [v.mode === 'pin' ? 1 : 0, Math.round(v.v * 1000)];
+  const raw = JSON.stringify(o);
+  return btoa(unescape(encodeURIComponent(raw))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function decodeState(str) {
+  try {
+    const b = str.replace(/-/g, '+').replace(/_/g, '/');
+    const o = JSON.parse(decodeURIComponent(escape(atob(b))));
+    if (!o || o.v !== 1) return false;
+    if (typeof o.f === 'number' && T[o.f]) FOCUS = o.f;
+    if (o.h) { cfg.hfa = o.h / 1000; el('hfa').value = o.h; }
+    if (typeof o.r === 'number') { cfg.reg = o.r; el('reg').value = o.r; }
+    if (typeof o.y === 'number') { cfg.pyw = o.y / 100; el('pyw').value = o.y; }
+    cfg.lock = !!o.k;
+    cfg.str.fill(NaN);
+    for (const i in o.s || {}) cfg.str[+i] = o.s[i] / 1000;
+    cfg.pair.clear();
+    for (const key in o.p || {}) {
+      const [isPin, v] = o.p[key];
+      cfg.pair.set(+key, { mode: isPin ? 'pin' : 'rate', v: isPin ? Math.round(v / 1000) : v / 1000 });
+    }
+    return true;
+  } catch (e) { return false; }
+}
+function shareLink() {
+  const url = location.origin + location.pathname + '#s=' + encodeState();
+  const done = msg => {
+    const b = el('share'), was = b.textContent;
+    b.textContent = msg;
+    setTimeout(() => { b.textContent = was; }, 1800);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => done('Copied'), () => { location.hash = 's=' + encodeState(); done('In the bar'); });
+  } else {
+    location.hash = 's=' + encodeState();
+    done('In the bar');
+  }
+}
+
+/* ===========================================================================
+   TONIGHT — which of the next day's games actually matters.
+
+   For each game, force it one way then the other and re-simulate. Because the
+   generator is seeded identically for both runs, every other game unfolds the
+   same way in each, so the difference between the two answers is the effect of
+   that one result rather than sampling noise. That is why a few hundred seasons
+   is enough to rank them.
+=========================================================================== */
+const ROOT_SIMS = 2200;
+let rootData = null, rootBusy = false;
+
+function nextGameDate() {
+  let best = 1e9;
+  for (let k = 0; k < NG; k++) if (D.games[k][0] < best) best = D.games[k][0];
+  return best === 1e9 ? -1 : best;
+}
+function buildRooting(done) {
+  if (rootBusy) return;
+  rootBusy = true;
+  const C = lastC || compile();
+  const day = nextGameDate();
+  const list = [];
+  for (let k = 0; k < NG; k++) if (D.games[k][0] === day) list.push(k);
+  const ph = Float64Array.from(C.ph);
+  const rows = [];
+  let at = 0;
+  const busy = el('rtBusy');
+  const oddsWith = (k, homeWins) => {
+    const keep = ph[k];
+    ph[k] = homeWins ? 1 : 0;
+    const acc = newAcc();
+    makeSim({ ph, p: C.p, games: REM_ALL, away: gAway, home: gHome,
+      baseW, baseH, baseDv, baseLg })(ROOT_SIMS, acc);
+    ph[k] = keep;
+    let made = 0;
+    for (let z = 1; z < 7; z++) made += acc.seed[z];
+    return made / acc.sims;
+  };
+  if (!list.length) { rootBusy = false; rootData = []; if (done) done(); return; }
+  (function tick() {
+    const t0 = performance.now();
+    do {
+      const k = list[at++];
+      const hm = gHome[k], aw = gAway[k];
+      const ifHome = oddsWith(k, true), ifAway = oddsWith(k, false);
+      rows.push({ k, home: hm, away: aw, ifHome, ifAway, swing: ifHome - ifAway });
+    } while (at < list.length && performance.now() - t0 < 110);
+    busy.textContent = at < list.length ? `Weighing tonight's games… ${at} of ${list.length}` : '';
+    if (at < list.length) return requestAnimationFrame(tick);
+    rows.sort((a, b) => Math.abs(b.swing) - Math.abs(a.swing));
+    rootData = rows;
+    rootBusy = false;
+    if (done) done();
+  })();
+}
+
+function chartRooting() {
+  const host = el('cRoot');
+  host.textContent = '';
+  if (!rootData) return;
+  if (!rootData.length) {
+    el('rtBusy').textContent = 'No games left on the schedule.';
+    return;
+  }
+  const rows = rootData;
+  const W = host.clientWidth || 640, rowH = 26;
+  const m = { t: 12, r: 20, b: 32, l: 96 };
+  const H = m.t + rowH * rows.length + m.b, pw = W - m.l - m.r;
+  const top = Math.max(...rows.map(r => Math.abs(r.swing)), 0.001);
+  const mid = m.l + pw / 2;
+  const X = v => mid + (v / top) * (pw / 2);
+  const g = s('svg', { viewBox: `0 0 ${W} ${H}`, height: H, role: 'img' });
+  for (const tv of [-1, -0.5, 0, 0.5, 1]) {
+    const x = mid + tv * (pw / 2);
+    g.append(s('line', { x1: x, x2: x, y1: m.t, y2: m.t + rowH * rows.length,
+      stroke: tv === 0 ? 'var(--ink)' : 'var(--rule)', 'stroke-width': 1 }));
+    g.append(txt(x, H - 12, (Math.abs(tv * top) * 100).toFixed(1) + '%', { 'text-anchor': 'middle' }));
+  }
+  g.append(txt(m.l, H - 12, 'swing in your odds', { 'text-anchor': 'start', 'font-size': 9,
+    'letter-spacing': '.08em' }));
+  const bh = Math.min(13, rowH - 9);
+  rows.forEach((r, k) => {
+    const y = m.t + k * rowH + (rowH - bh) / 2;
+    const favour = r.swing >= 0 ? r.home : r.away;
+    g.append(txt(m.l - 8, y + bh / 2, `${T[r.away].abbr} at ${T[r.home].abbr}`, {
+      'text-anchor': 'end', 'dominant-baseline': 'middle', 'font-family': 'var(--f-num)',
+      'font-size': 10, fill: 'var(--ink)' }));
+    const w = Math.abs(X(r.swing) - mid);
+    g.append(s('rect', { x: r.swing >= 0 ? mid : mid - w, y, width: Math.max(1, w), height: bh,
+      fill: r.swing >= 0 ? 'var(--s1)' : 'var(--s2)' }));
+    const lx = r.swing >= 0 ? mid + w + 7 : mid - w - 7;
+    g.append(txt(lx, y + bh / 2, `${T[favour].abbr} +${(Math.abs(r.swing) * 100).toFixed(1)}`, {
+      'text-anchor': r.swing >= 0 ? 'start' : 'end', 'dominant-baseline': 'middle',
+      fill: 'var(--ink)', 'font-weight': k === 0 ? 700 : 400, 'font-size': 10 }));
+    const hit = s('rect', { x: 0, y: m.t + k * rowH, width: W, height: rowH, fill: 'transparent' });
+    onProbe(hit, e => showTip(e, `${T[r.away].full} at ${T[r.home].full}`, [
+      [`If ${T[r.home].abbr} win`, oddsTxt(r.ifHome), 'var(--s1)'],
+      [`If ${T[r.away].abbr} win`, oddsTxt(r.ifAway), 'var(--s2)'],
+      ['Root for', T[favour].full, null]]), hideTip);
+    g.append(hit);
+  });
+  host.append(g);
+  table(el('tRoot'), ['Game', 'Root for', 'If home wins', 'If away wins', 'Swing'],
+    rows.map(r => [`${T[r.away].abbr} at ${T[r.home].abbr}`,
+      T[r.swing >= 0 ? r.home : r.away].full, oddsTxt(r.ifHome), oddsTxt(r.ifAway),
+      (Math.abs(r.swing) * 100).toFixed(2) + ' pts']), { ab: [0] });
+}
+function showRooting() {
+  const day = nextGameDate();
+  el('rtTitle').textContent = `Who ${T[FOCUS].city} should root for`;
+  el('rtDate').textContent = day >= 0 ? fmtDow(D.dates[day]) + ' ' + fmtDay(D.dates[day]) : 'season over';
+  if (rootData) { chartRooting(); return; }
+  el('rtBusy').textContent = "Weighing tonight's games…";
+  buildRooting(() => { chartRooting(); el('rtBusy').textContent = ''; });
 }
 
 /* ===========================================================================
@@ -2536,6 +2739,7 @@ for (const id of ['hfa', 'reg', 'pyw']) {
   el(id).addEventListener('input', () => { syncModel(); apply(true); });
   el(id).addEventListener('change', () => { syncModel(); histData = null; apply(false); if (!el('p-hi').hidden) showHistory(); });
 }
+el('share').onclick = shareLink;
 el('theme').onclick = () => {
   const cur = document.documentElement.dataset.theme;
   const dark = cur ? cur === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
@@ -2592,6 +2796,15 @@ new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(() => { drawCharts(
   give an identical answer.</p>`;
 }
 
+// a shared link decides the club and the scenario before anything is built
+const hashState = /(?:^|[#&])s=([^&]+)/.exec(location.hash);
+if (hashState) decodeState(hashState[1]);
+MYLG = LEAGUE[LG[FOCUS]];
+FOCUS_PAIRS = PAIRS_OF[FOCUS].slice().sort((x, y) =>
+  y.n - x.n || T[other(x, FOCUS)].abbr.localeCompare(T[other(y, FOCUS)].abbr));
+FOCUS_GAMES = GAMES_OF[FOCUS];
+SERIES = buildSeries();
+TOUGH = FOCUS_PAIRS.reduce((a, pr) => a + (T[other(pr, FOCUS)].pct > 0.5 ? pr.n : 0), 0);
 syncModel();
 buildFocusPicker();
 focusLabels();
@@ -2599,6 +2812,9 @@ buildOppRows();
 buildTeamRows();
 buildMatchupSheet();
 buildStandings();
+// a shared link may have arrived in lock mode, so match the toggle to it
+el('mProb').setAttribute('aria-pressed', String(!cfg.lock));
+el('mLock').setAttribute('aria-pressed', String(cfg.lock));
 renderMagic();          // static: depends only on real results, never on the controls
 drawMagic();
 wireTabs(document.querySelector('.rail .tabs'));
@@ -2606,6 +2822,7 @@ wireTabs(document.querySelector('main .tabs'), () => {
   if (lastAcc && !el('p-fc').hidden) rebuildFigures(lastAcc);
   if (lastC && !el('p-sc').hidden) schedView(lastC.p);
   if (!el('p-hi').hidden) showHistory();
+  if (!el('p-rt').hidden) showRooting();
   drawCharts(); drawMagic();
 });
 apply(false);
