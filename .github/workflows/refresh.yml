@@ -1,0 +1,76 @@
+name: Refresh MLB data
+
+# Keeps the simulator current without you touching it.
+#
+#  - schedule:         once a day, after every game is final
+#  - push:             so a fresh clone is up to date the moment you upload it
+#  - workflow_dispatch: a "Run workflow" button in the Actions tab
+#
+# The job pulls today's standings and schedule, rewrites the data block inside
+# index.html, commits the change, and publishes the page to GitHub Pages.
+on:
+  schedule:
+    # 11:30 UTC = 7:30am Eastern. Cron here is always UTC, and a west-coast
+    # night game can end around 05:30 UTC, so this is safely after the last out.
+    - cron: '30 11 * * *'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Only one refresh at a time; a newer run supersedes a queued one.
+concurrency:
+  group: refresh-mlb
+  cancel-in-progress: false
+
+permissions:
+  contents: write        # to commit the refreshed data back
+  pages: write           # to publish
+  id-token: write        # required by the Pages deploy action
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Pull the latest results into index.html
+        run: python3 refresh_data.py
+
+      - name: Commit if the data moved
+        run: |
+          if git diff --quiet -- index.html; then
+            echo "No change — the feed matches what is already committed."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          # [skip ci] stops this commit from triggering the push trigger again,
+          # which would otherwise loop forever.
+          git commit -m "Refresh MLB data through $(date -u +%Y-%m-%d) [skip ci]"
+          # Explicit refspec so this works whether the run came from the
+          # schedule or from a push.
+          git push origin HEAD:${{ github.ref_name }}
+
+      # Publish only the page itself. Uploading the whole checkout would also
+      # ship .git, the workflow and the Python script to the public site.
+      - name: Stage the site
+        run: |
+          mkdir -p _site
+          cp index.html _site/index.html
+          touch _site/.nojekyll
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}

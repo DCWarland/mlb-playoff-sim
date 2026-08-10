@@ -1,0 +1,5 @@
+# Rollback copies of the page — local only, never worth committing.
+*.bak
+
+# macOS
+.DS_Store
