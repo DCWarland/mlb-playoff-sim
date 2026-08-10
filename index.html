@@ -678,6 +678,22 @@ tr.model td.res{color:var(--ink2)}
     <!-- ---------- METHOD ---------- -->
     <div role="tabpanel" id="p-me" aria-labelledby="t-me" hidden style="padding-top:20px">
       <section class="sec">
+        <div class="hd"><h2>Is any of this any good?</h2><span class="kicker">Scored against reality</span></div>
+        <p class="lede">The honest test, and it responds to the model sliders — change them under <b>Model</b> in the rail and watch this re-score. Walking the season in order, every finished game is scored
+          against what the model would have said <i>before</i> it was played, using only the records as
+          they stood that morning. If the model is calibrated, games it called 60% should have been won
+          about 60% of the time. The line is what happened; the faint diagonal is perfection.</p>
+        <div class="figs" id="calFigs"></div>
+        <div class="chart" id="cCal" style="margin-top:18px"></div>
+        <div class="barkey" style="margin-top:9px">
+          <span><i class="swl" style="background:var(--s1)"></i>What actually happened</span>
+          <span><i class="swl" style="background:var(--deemph)"></i>Perfect calibration</span>
+          <span style="color:var(--muted)">Bigger dot = more games behind it</span>
+        </div>
+        <details><summary>Table</summary><div class="tscroll" id="tCal"></div></details>
+      </section>
+
+      <section class="sec">
         <div class="hd"><h2>Method</h2><span class="kicker">What is under it</span></div>
         <div class="prose" id="method"></div>
       </section>
@@ -2276,6 +2292,120 @@ function schedView(p) {
 }
 
 /* ===========================================================================
+   BACKTEST — score the model against every game it could have predicted.
+
+   One pass down the timeline. Before applying each finished result, work out what
+   the model would have said that morning from the records so far, then compare.
+   Nothing here uses hindsight, and it needs no simulation at all.
+
+   Brier score is the mean squared error of a probability forecast: 0 is perfect,
+   0.25 is what you get by always saying "coin flip". The benchmark to beat is not
+   0.25 though — it is "always favour the home club", which is already a real
+   forecast. Beating that is the only evidence the strength model earns its keep.
+=========================================================================== */
+function backtest() {
+  const W = new Int16Array(NT), L = new Int16Array(NT);
+  const BINS = 20;      // predictions cluster near .500, so deciles are too coarse
+  const sumPred = new Float64Array(BINS), sumObs = new Float64Array(BINS), cnt = new Float64Array(BINS);
+  const edge = Math.log(cfg.hfa / (1 - cfg.hfa));
+  const flat = addEdge(0.5, edge);            // the home-field-only forecast
+  let brier = 0, brierFlat = 0, n = 0, right = 0, rightFlat = 0;
+  for (let k = 0; k < NP; k++) {
+    const hm = uHome[k], aw = uAway[k], res = uRes[k];
+    const gh = W[hm] + L[hm], ga = W[aw] + L[aw];
+    if (gh >= 15 && ga >= 15) {               // wait for a record worth using
+      const ph_ = W[hm] / gh, pa_ = W[aw] / ga;
+      const sh = 0.5 + (ph_ - 0.5) * (gh / (gh + cfg.reg));
+      const sa = 0.5 + (pa_ - 0.5) * (ga / (ga + cfg.reg));
+      const q = addEdge(log5(sh, sa), edge);
+      const b = Math.max(0, Math.min(BINS - 1, Math.floor(q * BINS)));
+      sumPred[b] += q; sumObs[b] += res; cnt[b]++;
+      brier += (q - res) * (q - res);
+      brierFlat += (flat - res) * (flat - res);
+      if ((q >= 0.5) === (res === 1)) right++;
+      if ((flat >= 0.5) === (res === 1)) rightFlat++;
+      n++;
+    }
+    if (res) { W[hm]++; L[aw]++; } else { W[aw]++; L[hm]++; }
+  }
+  const bins = [];
+  for (let b = 0; b < BINS; b++) if (cnt[b] >= 25)
+    bins.push({ pred: sumPred[b] / cnt[b], obs: sumObs[b] / cnt[b], n: cnt[b] });
+  return { bins, n, brier: brier / n, brierFlat: brierFlat / n,
+    acc: right / n, accFlat: rightFlat / n };
+}
+
+function renderBacktest() {
+  const r = backtest();
+  const skill = 1 - r.brier / r.brierFlat;      // proportional gain over the benchmark
+  const figs = [
+    ['Games scored', r.n.toLocaleString(), 'each judged on the morning of'],
+    ['Brier score', r.brier.toFixed(4), 'lower is better; 0 is perfect'],
+    ['Home-field only', r.brierFlat.toFixed(4), 'the benchmark to beat'],
+    ['Gain on the benchmark', (skill * 100).toFixed(1) + '%', skill > 0 ? 'the model earns its keep' : 'no better than the benchmark'],
+    ['Winner called', pct(r.acc, 1), 'right side of the coin'],
+    ['Benchmark called', pct(r.accFlat, 1), 'always the home club'],
+  ];
+  const fb = el('calFigs'); fb.textContent = '';
+  for (const [label, val, sub] of figs) {
+    const d = document.createElement('div');
+    const v = document.createElement('div'); v.className = 'v'; v.textContent = val;
+    const l = document.createElement('div'); l.className = 'l'; l.textContent = label;
+    const s2 = document.createElement('div');
+    s2.className = 'l'; s2.style.textTransform = 'none'; s2.style.letterSpacing = '0'; s2.style.opacity = '.75';
+    s2.textContent = sub;
+    d.append(v, l, s2); fb.append(d);
+  }
+  calBins = r.bins;
+  chartCal();
+  table(el('tCal'), ['Model said', 'Actually won', 'Games', 'Difference'],
+    r.bins.map(b => [pct(b.pred, 1), pct(b.obs, 1), Math.round(b.n).toLocaleString(),
+      ((b.obs - b.pred) * 100 >= 0 ? '+' : '') + ((b.obs - b.pred) * 100).toFixed(1) + ' pts']));
+}
+let calBins = null;
+function chartCal() {
+  const host = el('cCal');
+  if (!calBins || !calBins.length) { host.textContent = ''; return; }
+  const W = host.clientWidth || 640, H = 260;
+  const m = { t: 14, r: 22, b: 42, l: 46 };
+  const pw = W - m.l - m.r, ph2 = H - m.t - m.b;
+  const lo = Math.min(0.25, calBins[0].pred - 0.05), hi = Math.max(0.75, calBins[calBins.length - 1].pred + 0.05);
+  const X = v => m.l + ((v - lo) / (hi - lo)) * pw;
+  const Y = v => m.t + ph2 - ((v - lo) / (hi - lo)) * ph2;
+  host.textContent = '';
+  const g = s('svg', { viewBox: `0 0 ${W} ${H}`, height: H, role: 'img' });
+  for (let v = 0.3; v <= hi; v += 0.1) {
+    if (v < lo) continue;
+    g.append(s('line', { x1: X(v), x2: X(v), y1: m.t, y2: m.t + ph2, stroke: 'var(--rule)', 'stroke-width': 1 }));
+    g.append(s('line', { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), stroke: 'var(--rule)', 'stroke-width': 1 }));
+    g.append(txt(X(v), m.t + ph2 + 15, Math.round(v * 100) + '%', { 'text-anchor': 'middle' }));
+    g.append(txt(m.l - 7, Y(v), Math.round(v * 100) + '%', { 'text-anchor': 'end', 'dominant-baseline': 'middle' }));
+  }
+  g.append(txt(m.l, H - 6, 'WHAT THE MODEL SAID', { 'text-anchor': 'start', 'letter-spacing': '.09em', 'font-size': 9 }));
+  // perfect calibration
+  g.append(s('line', { x1: X(lo), y1: Y(lo), x2: X(hi), y2: Y(hi),
+    stroke: 'var(--deemph)', 'stroke-width': 2, 'stroke-opacity': .55 }));
+  const pts = calBins.map(b => `${X(b.pred)},${Y(b.obs)}`).join(' ');
+  g.append(s('polyline', { points: pts, fill: 'none', stroke: 'var(--s1)', 'stroke-width': 2,
+    'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+  const nMax = Math.max(...calBins.map(b => b.n));
+  for (const b of calBins) {
+    // radius carries the sample count: a thin band should not look as solid as a
+    // thick one, since a 46-game band swings several points on chance alone
+    const rr = 3.2 + 4.3 * Math.sqrt(b.n / nMax);
+    g.append(s('circle', { cx: X(b.pred), cy: Y(b.obs), r: rr, fill: 'var(--s1)',
+      stroke: 'var(--sheet)', 'stroke-width': 2 }));
+    const hit = s('circle', { cx: X(b.pred), cy: Y(b.obs), r: 14, fill: 'transparent' });
+    onProbe(hit, e => showTip(e, `Model said about ${pct(b.pred, 0)}`, [
+      ['Actually won', pct(b.obs, 1), 'var(--s1)'],
+      ['Games in this band', Math.round(b.n).toLocaleString(), null],
+      ['Off by', ((b.obs - b.pred) * 100).toFixed(1) + ' pts', null]]), hideTip);
+    g.append(hit);
+  }
+  host.append(g);
+}
+
+/* ===========================================================================
    SHAREABLE SCENARIOS — the whole control state packed into the URL, so a
    scenario can be texted to someone and open exactly as you left it.
 =========================================================================== */
@@ -2737,7 +2867,11 @@ function syncModel() {
 }
 for (const id of ['hfa', 'reg', 'pyw']) {
   el(id).addEventListener('input', () => { syncModel(); apply(true); });
-  el(id).addEventListener('change', () => { syncModel(); histData = null; apply(false); if (!el('p-hi').hidden) showHistory(); });
+  el(id).addEventListener('change', () => {
+    syncModel(); histData = null; apply(false);
+    if (!el('p-hi').hidden) showHistory();
+    if (!el('p-me').hidden) renderBacktest();   // re-score against reality
+  });
 }
 el('share').onclick = shareLink;
 el('theme').onclick = () => {
@@ -2747,7 +2881,8 @@ el('theme').onclick = () => {
   drawCharts();
 };
 let rt = null;
-new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(() => { drawCharts(); drawMagic(); if (!el('p-hi').hidden) { chartWalk(); chartHistory(); } }, 80); }).observe(document.querySelector('main'));
+new ResizeObserver(() => { clearTimeout(rt); rt = setTimeout(() => { drawCharts(); drawMagic(); if (!el('p-hi').hidden) { chartWalk(); chartHistory(); }
+  if (!el('p-me').hidden) chartCal(); }, 80); }).observe(document.querySelector('main'));
 
 {
   const d = new Date(D.lastGameDate + 'T12:00:00');
@@ -2816,6 +2951,7 @@ buildStandings();
 el('mProb').setAttribute('aria-pressed', String(!cfg.lock));
 el('mLock').setAttribute('aria-pressed', String(cfg.lock));
 renderMagic();          // static: depends only on real results, never on the controls
+renderBacktest();       // likewise: scored on games already played
 drawMagic();
 wireTabs(document.querySelector('.rail .tabs'));
 wireTabs(document.querySelector('main .tabs'), () => {
@@ -2823,6 +2959,7 @@ wireTabs(document.querySelector('main .tabs'), () => {
   if (lastC && !el('p-sc').hidden) schedView(lastC.p);
   if (!el('p-hi').hidden) showHistory();
   if (!el('p-rt').hidden) showRooting();
+  if (!el('p-me').hidden) { renderBacktest(); }
   drawCharts(); drawMagic();
 });
 apply(false);

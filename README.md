@@ -59,9 +59,9 @@ and warns you if MLB's feed doesn't reconcile.
 
 Controls live in the left rail under three tabs; views are tabbed across the top.
 
-**Rail — Jays / League / Model**
+**Rail — My club / League / Model**
 
-- **Jays** — a win rate per opponent, or an exact record in the other mode
+- **My club** — a win rate per opponent, or an exact record in the other mode
 - **League** — every club's strength. Type a win total into the figure beside the
   slider and it solves for the strength that produces it.
 - **Model** — home-field edge, regression to .500, weight on run difference
@@ -87,11 +87,11 @@ every override — so it opens for someone else exactly as you left it.
 **Magic** is the one tab the controls don't touch. A magic number is arithmetic on
 games already played — how many combined events (your wins plus their losses) must
 land before a result is guaranteed. `M(a,b) = (W_b + games_b_left) - W_a + 1`, which
-read from the other side is *b*'s elimination number against *a*. So one 15×15 grid
+read from the other side is *b*'s elimination number against *a*. So one 15x15 grid
 answers both questions. It moves once a day on real results, and shows how each
 number changed overnight.
 
-**Matchups** is the full-control sheet: all 116 pairs of clubs with games left.
+**Matchups** is the full-control sheet: all 181 pairs of clubs with games left.
 `Model` simulates from strength, `Rate` fixes a win percentage, `Pin` fixes an exact
 result. Adjusting either side moves both clubs, because a game one wins is a game the
 other loses. The rail and this sheet are two views of one state, so they cannot disagree.
