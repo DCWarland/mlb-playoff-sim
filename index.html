@@ -640,10 +640,16 @@ tr.model td.res{color:var(--ink2)}
     <div role="tabpanel" id="p-rt" aria-labelledby="t-rt" hidden style="padding-top:20px">
       <section class="sec">
         <div class="hd"><h2 id="rtTitle">Who to root for</h2><span class="kicker" id="rtDate"></span></div>
-        <p class="lede">Each game on the next day of the schedule, simulated both ways: once with the
-          home club winning, once with the away club. The bar is how much your odds move between those
-          two worlds, so the longest bar is the game that matters most tonight. Both runs use the same
-          random numbers, which cancels the noise and leaves only the real difference.</p>
+        <p class="lede">Each game on the next day of the schedule, simulated both ways: once with
+          the home club winning, once with the away club. The bar is how much your odds move between
+          those two worlds, so the longest bar is the game that matters most tonight.</p>
+        <p class="lede">Every simulated season is seeded from its own number, so season 7 unfolds
+          identically in both runs apart from this one result. That is what makes the comparison
+          trustworthy — the difference is the effect of the game, not the luck of the draw. Sharing a
+          single stream is not enough: tie-breaks and the playoff bracket draw a variable number of
+          numbers and knock the two runs out of step, which is exactly how an earlier version of this
+          chart ended up reporting noise.</p>
+        <p class="lede" id="rtNote" style="color:var(--ink)"></p>
         <div id="rtBusy" class="lede" style="color:var(--ink)"></div>
         <div class="chart" id="cRoot"></div>
         <div class="barkey" style="margin-top:9px">
@@ -1079,6 +1085,7 @@ function solveStrength(i, target) {
 /* ===========================================================================
    3. THE SIMULATION
 =========================================================================== */
+let SIM_SEED = 0x9E3779B9;      // fixed, so identical settings give an identical answer
 function mulberry32(a) {
   return function () {
     a |= 0; a = a + 0x6D2B79F5 | 0;
@@ -1123,8 +1130,27 @@ function makeSim(Cw) {
   const ord = new Int8Array(15), isDW = new Uint8Array(NT);
   const seeds = [new Int8Array(6), new Int8Array(6)];
   const seedOf = new Int8Array(NT);
-  const rng = mulberry32(0x9E3779B9);
   const edge = Math.log(cfg.hfa / (1 - cfg.hfa));
+  /* Two streams, each reseeded at the top of every simulated season from that
+     season's index.
+
+     Why it matters: comparing two scenarios only works if season number 7 unfolds
+     identically in both except for the thing being changed. One shared stream does
+     not give you that. Tie-breaking and the playoff bracket draw a VARIABLE number
+     of numbers, so the moment either differs the two runs fall out of step and
+     become independent samples — which is what made the rooting guide's numbers
+     almost pure noise, disagreeing on even the sign from one seed to the next.
+
+     Reseeding per season fixes the alignment, and splitting games from tie-breaks
+     means the schedule always consumes exactly one number per game, so nothing
+     downstream can knock the season itself out of step. */
+  const mix = (a, b) => {
+    let h = Math.imul(a ^ b, 0x9E3779B1) >>> 0;
+    h ^= h >>> 15; h = Math.imul(h, 0x85EBCA6B) >>> 0; h ^= h >>> 13;
+    return h >>> 0;
+  };
+  let rng = mulberry32(mix(SIM_SEED, 0)), trng = mulberry32(mix(SIM_SEED, 1));
+  let simNo = 0;
 
   // MLB's tiebreakers: head-to-head, then divisional record (same division
   // only), then league record. Positive means a finishes ahead of b.
@@ -1135,7 +1161,7 @@ function makeSim(Cw) {
     if (DIV[a] === DIV[b]) { const x = dv[a] / divTot[a], y = dv[b] / divTot[b]; if (x !== y) return x - y; }
     const x = lg[a] / leaTot[a], y = lg[b] / leaTot[b];
     if (x !== y) return x - y;
-    return rng() < 0.5 ? 1 : -1;
+    return trng() < 0.5 ? 1 : -1;
   }
   // One playoff series. `hi` is the higher seed and hosts wherever the pattern
   // says 1; whoever reaches `needed` wins.
@@ -1143,7 +1169,7 @@ function makeSim(Cw) {
     let a = 0, b = 0;
     for (let g = 0; g < pattern.length; g++) {
       const home = pattern[g] ? hi : lo, away = pattern[g] ? lo : hi;
-      const homeWins = rng() < addEdge(log5(p[home], p[away]), edge);
+      const homeWins = trng() < addEdge(log5(p[home], p[away]), edge);
       if ((homeWins ? home : away) === hi) a++; else b++;
       if (a === needed) return hi;
       if (b === needed) return lo;
@@ -1153,6 +1179,9 @@ function makeSim(Cw) {
 
   return function runChunk(n, acc) {
     for (let s = 0; s < n; s++) {
+      const rseed = mix(SIM_SEED, ++simNo);
+      rng = mulberry32(rseed);              // the schedule: exactly one draw per game
+      trng = mulberry32(mix(rseed, 0x51ED270B));  // ties and the bracket, kept separate
       W.set(bW); h.set(bH); dv.set(bDv); lg.set(bLg);
 
       for (let m = 0; m < GL.length; m++) {
@@ -1207,7 +1236,7 @@ function makeSim(Cw) {
       }
       // home field in the World Series goes to the better regular-season record
       const hiWS = W[champ[0]] > W[champ[1]] ? champ[0]
-        : W[champ[1]] > W[champ[0]] ? champ[1] : (rng() < 0.5 ? champ[0] : champ[1]);
+        : W[champ[1]] > W[champ[0]] ? champ[1] : (trng() < 0.5 ? champ[0] : champ[1]);
       const loWS = hiWS === champ[0] ? champ[1] : champ[0];
       acc.ws[series(hiWS, loWS, SER_7, 4)]++;
 
@@ -2765,8 +2794,12 @@ function shareLink() {
    that one result rather than sampling noise. That is why a few hundred seasons
    is enough to rank them.
 =========================================================================== */
-const ROOT_SIMS = 2200;
-let rootData = null, rootBusy = false;
+/* Games between two clubs of the other league cannot move this league's
+   standings, so their effect is exactly zero and there is nothing to measure.
+   Dropping them roughly halves the work, which buys the precision to separate
+   the games that do matter from each other. */
+const ROOT_SIMS = 5200;
+let rootData = null, rootBusy = false, rootSkipped = 0;
 
 function nextGameDate() {
   let best = 1e9;
@@ -2779,7 +2812,13 @@ function buildRooting(done) {
   const C = lastC || compile();
   const day = nextGameDate();
   const list = [];
-  for (let k = 0; k < NG; k++) if (D.games[k][0] === day) list.push(k);
+  let skipped = 0;
+  for (let k = 0; k < NG; k++) {
+    if (D.games[k][0] !== day) continue;
+    if (LG[gHome[k]] !== LG[FOCUS] && LG[gAway[k]] !== LG[FOCUS]) { skipped++; continue; }
+    list.push(k);
+  }
+  rootSkipped = skipped;
   const ph = Float64Array.from(C.ph);
   const rows = [];
   let at = 0;
@@ -2880,6 +2919,11 @@ function showRooting() {
   const day = nextGameDate();
   el('rtTitle').textContent = `Who ${T[FOCUS].city} should root for`;
   el('rtDate').textContent = day >= 0 ? fmtDow(D.dates[day]) + ' ' + fmtDay(D.dates[day]) : 'season over';
+  el('rtNote').textContent = rootSkipped
+    ? `${rootSkipped} of tonight's games are between two ${LGNAME[1 - LG[FOCUS]].replace('League', 'League')} `
+      + 'clubs. Those cannot move this league\u2019s standings at all, so they are left out rather than '
+      + 'listed at zero.'
+    : '';
   if (rootData) { chartRooting(); return; }
   el('rtBusy').textContent = "Weighing tonight's games…";
   buildRooting(() => { chartRooting(); el('rtBusy').textContent = ''; });
