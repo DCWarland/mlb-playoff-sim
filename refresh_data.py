@@ -161,7 +161,12 @@ def main():
             h, a = g["teams"]["home"], g["teams"]["away"]
             hi, ai = idx[h["team"]["id"]], idx[a["team"]["id"]]
 
-            if state == "F":
+            # A game is finished when, and only when, a winner has been declared.
+            # Keying off state == "F" alone loses games that are mid-flight: an
+            # in-progress game is neither final nor scheduled, so it fell out of
+            # both lists and two clubs quietly lost a game from their season.
+            decided = h.get("isWinner") is not None or a.get("isWinner") is not None
+            if decided:
                 if h.get("score") is None or a.get("score") is None:
                     continue
                 last_final = max(last_final, day["date"])
@@ -182,9 +187,10 @@ def main():
                     if order[wi]["div"] == order[li]["div"]:
                         divrec[wi][0] += 1
                         divrec[li][1] += 1
-            elif state == "S":
-                # Every remaining game in both leagues. Postponed games ("D") are
-                # skipped: MLB already lists the makeup as its own scheduled game.
+            elif state not in ("D", "C"):
+                # Everything still undecided counts as left to play: scheduled,
+                # pre-game, in progress, suspended. Postponed ("D") and cancelled
+                # ("C") are skipped — MLB lists any makeup as its own game.
                 if day["date"] not in date_idx:
                     date_idx[day["date"]] = len(dates)
                     dates.append(day["date"])
@@ -206,8 +212,12 @@ def main():
         left[h] += 1
     bad = [(m["abbr"], left[m["i"]], m["rem"]) for m in order if left[m["i"]] != m["rem"]]
     if bad:
-        print("WARNING: scheduled game counts do not reconcile with games played:", bad)
-        print("The simulation still runs, but a team's season may not total 162 games.")
+        print("WARNING: these clubs do not add up to a 162-game season:")
+        for ab, got, want in bad:
+            print(f"  {ab}: {got} games left in the schedule, but 162 minus games played is {want}")
+        print("The simulation still runs, but those clubs are short a game.")
+    else:
+        print("All 30 clubs reconcile to 162 games.")
 
     # Carry forward the previous day's records so the page can show how each
     # magic number moved overnight. Only rolls over when the feed has actually
